@@ -8,6 +8,7 @@
 //this is an important file, raytracing.cpp is what you need to fill out
 //In principle, you can do the entire project ONLY by working in these two files
 
+class AABB;
 extern Mesh MyMesh; //Main mesh
 extern std::vector<Vec3Df> MyLightPositions;
 extern Vec3Df MyCameraPosition; //currCamera
@@ -33,5 +34,42 @@ void yourDebugDraw();
 
 //want keyboard interaction? Here it is...
 void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3Df & rayDestination);
+
+//intersection ray with [Blank]
+bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangle triangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection);
+bool rayIntersectionPointBox(Vec3Df rayOrigin, Vec3Df rayDirection, AABB box, Vec3Df& pin, Vec3Df& pout);
+
+Vec3Df calculateSurfaceNormal(Triangle triangle);
+
+
+/**********************************************************************************************
+**Axis-Aligned BoundingBox class
+***********************************************************************************************/
+class AABB {
+public:
+	AABB();
+	AABB(const Vec3Df min, const Vec3Df max);
+
+	//Returns true if a triangle is partially inside the boundingbox
+	bool withinBox(const Triangle t);
+
+	//Returns true if a triangle is entirely inside the boundingbox
+	bool withinBoxFull(const Triangle t);
+
+	//highlights the box edges
+	void highlightBoxEdges();
+
+	// min and max value
+	std::pair<Vec3Df, Vec3Df> minmax_;
+
+	//vertices of the bounding box
+	std::vector<Vertex> vertices_;
+
+	//the sides of the box
+	std::vector<std::pair<Vec3Df, Vec3Df>> sides_;
+
+	//triangles residing inside the bounding box
+	std::vector<Triangle> triangles;
+};
 
 #endif
