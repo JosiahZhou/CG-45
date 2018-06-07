@@ -77,63 +77,11 @@ public:
 ***********************************************************************************************/
 class BoxTree {
 public:
-	BoxTree(const AABB data) {
-		this->data = data;
-		this->left = NULL;
-		this->right = NULL;
-	}
+	BoxTree(const AABB data);
+	BoxTree(const AABB data, BoxTree *left, BoxTree *right);
 
-	BoxTree(const AABB data, BoxTree *left, BoxTree *right) {
-		this->data = data;
-		this->left = left;
-		this->right = right;
-	}
-
-	void split(int minTriangles) {
-		if (data.triangles.size() < minTriangles)
-		{
-			return;
-		}
-
-		//	+------+      
-		//  |`.    |`.    
-		//  |  `3--X---7  
-		//  |   |  |   |  
-		//  0---+--+   |  
-		//   `. |   `. |  
-		//     `+------+ 
-		Vec3Df midPoint = (data.vertices_[3].p + data.vertices_[7].p) / 2.0f;
-		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
-		left = new BoxTree(leftNode); // Beware: Usage of "new"
-
-		//	+------+      
-		//  |`.    |`.    
-		//  |  `+--+---7  
-		//  |   |  |   |  
-		//  0---X--4   |  
-		//   `. |   `. |  
-		//     `+------+ 
-		midPoint = (data.vertices_[0].p + data.vertices_[4].p) / 2.0f;
-		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
-		right = new BoxTree(rightNode); // Beware: Usage of "new"
-
-		left->split(minTriangles);
-		right->split(minTriangles);
-	}
-
-	void traverse(int indent) {
-		std::cout << data.triangles.size() << std::endl;
-
-		if (left != NULL)
-		{
-			left->traverse(indent + 4);
-		}
-
-		if (right != NULL)
-		{
-			right->traverse(indent + 4);
-		}
-	}
+	// splits the box ("data") recursively into smaller parts, and adds them to the tree, until it the amount of triangles within the box is smaller than "minTriangles"
+	void split(int minTriangles);
 
 	AABB data;
 	BoxTree *left = NULL;

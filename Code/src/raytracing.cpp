@@ -246,101 +246,9 @@ void yourDebugDraw()
 	////triangulated sphere is nice for the preview
 }
 
-// TODO: complete and bugfix this method
-// Pre-Condition, initial tree.data needs to be set.
-
-//void split(int minTriangles, BoxTree *&tree)
-//{
-//
-//	// if this.value has not been set, then triangles.size == 0
-//	/*if (tree.data.triangles.size() < minTriangles)
-//	{
-//		return;
-//	}*/
-//
-//	
-//	Vec3Df midPoint = (tree->data.vertices_[3].p + tree->data.vertices_[7].p) / 2.0f;
-//	AABB leftNode = AABB(tree->data.vertices_[0].p, midPoint);
-//
-//	BoxTree l;
-//	l.data = leftNode;
-//	tree->left = &l;
-//
-//
-//	/*float edgeX = Vec3Df::squaredDistance(tree.data.vertices_[4].p, tree.data.vertices_[0].p);
-//	float edgeY = Vec3Df::squaredDistance(tree.data.vertices_[2].p, tree.data.vertices_[0].p);
-//	float edgeZ = Vec3Df::squaredDistance(tree.data.vertices_[1].p, tree.data.vertices_[0].p);*/
-//
-//	//BoxTree l;// = (struct BoxTree *) malloc(sizeof(struct BoxTree));
-//	//BoxTree r;// = (struct BoxTree *) malloc(sizeof(struct BoxTree));
-//
-//	//if (edgeX > edgeY && edgeX > edgeZ)
-//	//{
-//
-//	//std::cout << tree.data.vertices_.size() << std::endl;
-//
-//	//	+------+      
-//	//  |`.    |`.    
-//	//  |  `3--X---7  
-//	//  |   |  |   |  
-//	//  0---+--+   |  
-//	//   `. |   `. |  
-//	//     `+------+ 
-//	//Vec3Df midPoint = (tree.data.vertices_[3].p + tree.data.vertices_[7].p) / 2.0f;
-//	//AABB leftNode = AABB(tree.data.vertices_[0].p, midPoint);
-//	//l.data = leftNode;
-//
-//	//boxes.push_back(leftNode);
-//
-//	//l->data = 0; //AABB(value.vertices_[0].p, midPoint);
-//
-//	//	+------+      
-//	//  |`.    |`.    
-//	//  |  `+--+---7  
-//	//  |   |  |   |  
-//	//  0---X--4   |  
-//	//   `. |   `. |  
-//	//     `+------+ 
-//	//midPoint = (tree.data.vertices_[0].p + tree.data.vertices_[4].p) / 2.0f;
-//	//AABB rightNode = AABB(midPoint, tree.data.vertices_[7].p);
-//	//r->data = rightNode;
-//
-//	/*}
-//	else if (edgeY > edgeX && edgeY > edgeZ)
-//	{
-//
-//	}
-//	else
-//	{
-//
-//	}*/
-//
-//	//std::cout << "SPLIT: " << tree.data.triangles.size() << std::endl;
-//	//std::cout << "SPLIT: " << leftNode.triangles.size() << std::endl;
-//	//std::cout << "SPLIT: " << rightNode.triangles.size() << std::endl;
-//
-//	//BoxTree l = { leftNode, NULL, NULL };
-//	//tree.left = &l;
-//
-//	//std::cout << "SPLIT: " << tree.left->data.triangles.size() << std::endl;
-//	//tree.left = l;
-//	//tree.right = r;
-//
-//	
-//	//std::cout << "SPLIT: " << l->data.triangles.size() << std::endl;
-//	//std::cout << "SPLIT: " << tree.left->data.triangles.size() << std::endl;
-//
-//	//std::cout << edgeX << ", " << edgeY << ", " << edgeZ << "   " << tree.data.triangles.size() << std::endl;
-//
-//	//split(minTriangles, l);
-//	//split(minTriangles, r);
-//
-//	//return tree;
-//}
-
 // https://stackoverflow.com/questions/13484943/print-a-binary-tree-in-a-pretty-way
 int rec[1000006];
-
+// Prints the BoxTree in directory-format
 void printTree(struct BoxTree* curr, int depth)
 {
 	int i;
@@ -358,6 +266,7 @@ void printTree(struct BoxTree* curr, int depth)
 	printTree(curr->right, depth + 1);
 }
 
+// Recursively adds the nodes of the BoxTree to "boxes" whom elements will be drawn on the screen.
 void addBoxes(struct BoxTree* curr) {
 	if (curr == NULL)return;
 	boxes.push_back(curr->data);
@@ -441,14 +350,10 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		addBoxes(&root);
 		printTree(&root, 0);
 
-		boxes.push_back(root.left->left->data);
-		//boxes.push_back(root.left->data);
-		//boxes.push_back(root.right->data);
-
-		/*if (rayIntersectionPointBox(rayOrigin, normRayDirection, boxes[0], pin, pout))
+		if (rayIntersectionPointBox(rayOrigin, normRayDirection, boxes[0], pin, pout))
 		{
 			std::cout << "Ray InterSects Box: \n" << pin << "\n" << pout << std::endl;
-		}*/
+		}
 	}
 	break;
 	default:
@@ -670,3 +575,103 @@ void AABB::highlightBoxEdges()
 /**********************************************************************************************
 **Axis-Aligned BoundingBox Tree Class
 ***********************************************************************************************/
+BoxTree::BoxTree(const AABB data) {
+	this->data = data;
+	this->left = NULL;
+	this->right = NULL;
+}
+
+BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right) {
+	this->data = data;
+	this->left = left;
+	this->right = right;
+}
+
+void BoxTree::split(int minTriangles) {
+	if (data.triangles.size() < minTriangles)
+	{
+		return;
+	}
+
+	float edgeX = Vec3Df::squaredDistance(data.vertices_[4].p, data.vertices_[0].p);
+	float edgeY = Vec3Df::squaredDistance(data.vertices_[2].p, data.vertices_[0].p);
+	float edgeZ = Vec3Df::squaredDistance(data.vertices_[1].p, data.vertices_[0].p);
+
+	if (edgeX > edgeY && edgeX > edgeZ)
+	{
+		//	+------+      
+		//  |`.    |`.    
+		//  |  `3--X---7  
+		//  |   |  |   |  
+		//  0---+--+   |  
+		//   `. |   `. |  
+		//     `+------+ 
+		Vec3Df midPoint = (data.vertices_[3].p + data.vertices_[7].p) / 2.0f;
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		left = new BoxTree(leftNode); // Beware: Usage of "new"
+
+		//	+------+      
+		//  |`.    |`.    
+		//  |  `+--+---7  
+		//  |   |  |   |  
+		//  0---X--4   |  
+		//   `. |   `. |  
+		//     `+------+ 
+		midPoint = (data.vertices_[0].p + data.vertices_[4].p) / 2.0f;
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		right = new BoxTree(rightNode); // Beware: Usage of "new"
+	}
+	else if (edgeY > edgeX && edgeY > edgeZ)
+	{
+		//	+------+      
+		//  |`.    |`.    
+		//  |  `+------7  
+		//  |   |  |   |  
+		//  0---+--+   X  
+		//   `. |   `. |  
+		//     `+------6 
+		Vec3Df midPoint = (data.vertices_[6].p + data.vertices_[7].p) / 2.0f;
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		left = new BoxTree(leftNode); // Beware: Usage of "new"
+
+		//	2------+      
+		//  |`.    |`.    
+		//  X  `+------7  
+		//  |   |  |   |  
+		//  0---+--+   |  
+		//   `. |   `. |  
+		//     `+------+ 
+		midPoint = (data.vertices_[0].p + data.vertices_[2].p) / 2.0f;
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		right = new BoxTree(rightNode); // Beware: Usage of "new"
+
+	}
+	else
+	{
+		//	+------5      
+		//  |`.    |`X    
+		//  |  `+------7  
+		//  |   |  |   |  
+		//  0---+--+   |  
+		//   `. |   `. |  
+		//     `+------+ 
+		Vec3Df midPoint = (data.vertices_[5].p + data.vertices_[7].p) / 2.0f;
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		left = new BoxTree(leftNode); // Beware: Usage of "new"
+
+		//	+------+      
+		//  |`.    |`.    
+		//  |  `+--+---7  
+		//  |   |  |   |  
+		//  0---|--+   |  
+		//   `X |   `. |  
+		//     1+------+ 
+		midPoint = (data.vertices_[0].p + data.vertices_[1].p) / 2.0f;
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		right = new BoxTree(rightNode); // Beware: Usage of "new"
+
+	}
+
+	left->split(minTriangles);
+	right->split(minTriangles);
+}
