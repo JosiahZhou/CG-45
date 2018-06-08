@@ -189,6 +189,15 @@ Vec3Df calculateSurfaceNormal(Triangle triangle)
 	return Vec3Df(normalX, normalY, normalZ); //return the normal of the triangle.
 }
 
+Vec3Df calculateCentroid(const Triangle t)
+{
+	Vec3Df trianglev0 = MyMesh.vertices[t.v[0]].p;
+	Vec3Df trianglev1 = MyMesh.vertices[t.v[1]].p;
+	Vec3Df trianglev2 = MyMesh.vertices[t.v[2]].p;
+
+	return (trianglev0 + trianglev1 + trianglev2) / 3.0f;
+}
+
 void yourDebugDraw()
 {
 	//draw open gl debug stuff
@@ -254,7 +263,7 @@ void printTree(struct BoxTree* curr, int depth)
 	int i;
 	if (curr == NULL)return;
 	printf("\t");
-	for (i = 0; i<depth; i++)
+	for (i = 0; i < depth; i++)
 		if (i == depth - 1)
 			printf("%s---", rec[depth - 1] ? "|" : "|");
 		else
@@ -267,13 +276,21 @@ void printTree(struct BoxTree* curr, int depth)
 }
 
 // Recursively adds the nodes of the BoxTree to "boxes" whom elements will be drawn on the screen.
-void addBoxes(struct BoxTree* curr) {
+void addBoxes(struct BoxTree* curr)
+{
 	if (curr == NULL)return;
 	boxes.push_back(curr->data);
 	addBoxes(curr->left);
 	addBoxes(curr->right);
 }
 
+void addLeavesOnly(struct BoxTree* curr)
+{
+	if (curr == NULL)return;
+	if (curr->left == NULL && curr->right == NULL) boxes.push_back(curr->data);
+	addBoxes(curr->left);
+	addBoxes(curr->right);
+}
 
 //yourKeyboardFunc is used to deal with keyboard input.
 //t is the character that was pressed
@@ -342,12 +359,11 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		Vec3Df pin, pout;
 
 		BoxTree root = BoxTree(aabb);
-		root.split(4000);
-
-		std::cout << root.left->data.triangles.size() << std::endl;
-		std::cout << root.right->data.triangles.size() << std::endl;
+		root.splitMiddle(4000);
+		//root.splitAvg(4000);
 
 		addBoxes(&root);
+		//addLeavesOnly(&root);
 		printTree(&root, 0);
 
 		if (rayIntersectionPointBox(rayOrigin, normRayDirection, boxes[0], pin, pout))
@@ -478,7 +494,8 @@ AABB::AABB(const Vec3Df min, const Vec3Df max)
 	// initialize triangles
 	for (int i = 0; i < MyMesh.triangles.size(); i++)
 	{
-		if (withinBox(MyMesh.triangles[i]))
+		// WithinBox/WithinBoxFull: You Decide...
+		if (withinBoxFull(MyMesh.triangles[i]))
 		{
 			triangles.push_back(MyMesh.triangles[i]);
 		}
@@ -571,7 +588,6 @@ void AABB::highlightBoxEdges()
 	glEnd();
 }
 
-
 /**********************************************************************************************
 **Axis-Aligned BoundingBox Tree Class
 ***********************************************************************************************/
@@ -587,7 +603,32 @@ BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right) {
 	this->right = right;
 }
 
-void BoxTree::split(int minTriangles) {
+void BoxTree::splitMiddle(int minTriangles) {
+	// reduces the boxsize to 'fit' the object (i.e. reduce the size of the boundingbox to the minimum required)
+	if (data.triangles.size() > 0) {
+		Vec3Df min = MyMesh.vertices[data.triangles[0].v[0]].p;
+		Vec3Df max = MyMesh.vertices[data.triangles[0].v[0]].p;
+		for (int z = 0; z < data.triangles.size(); z++)
+		{
+			for (int y = 0; y < 3; y++)
+			{
+				for (int x = 0; x < 3; x++)
+				{
+					if (MyMesh.vertices[data.triangles[z].v[y]].p[x] > max[x])
+					{
+						max[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
+					}
+					if (MyMesh.vertices[data.triangles[z].v[y]].p[x] < min[x])
+					{
+						min[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
+					}
+				}
+			}
+		}
+
+		data = AABB(min, max);
+	}
+
 	if (data.triangles.size() < minTriangles)
 	{
 		return;
@@ -672,6 +713,124 @@ void BoxTree::split(int minTriangles) {
 
 	}
 
-	left->split(minTriangles);
-	right->split(minTriangles);
+	// should we delete empty Boxes?
+	/*if (left->data.triangles.empty())
+	{
+		delete left;
+		left = NULL;
+	}
+	else
+	{*/
+	left->splitMiddle(minTriangles);
+	//}
+
+	/*if (right->data.triangles.empty())
+	{
+		delete right;
+		right = NULL;
+	}
+	else
+	{*/
+	right->splitMiddle(minTriangles);
+	//}
+}
+
+
+//todo: Doesn't Work Yet!
+void BoxTree::splitAvg(int minTriangles) {
+	if (data.triangles.size() < minTriangles)
+	{
+		return;
+	}
+
+	float edgeX = Vec3Df::squaredDistance(data.vertices_[4].p, data.vertices_[0].p);
+	float edgeY = Vec3Df::squaredDistance(data.vertices_[2].p, data.vertices_[0].p);
+	float edgeZ = Vec3Df::squaredDistance(data.vertices_[1].p, data.vertices_[0].p);
+
+	Vec3Df avg = Vec3Df(0.0f, 0.0f, 0.0f);
+
+	for each (Triangle t in data.triangles)
+	{
+		avg += calculateCentroid(t);
+	}
+
+	avg /= (float)data.triangles.size();
+
+	if (edgeX > edgeY && edgeX > edgeZ)
+	{
+
+		//	+------+      
+		//  |`.    |`.    
+		//  |  `3--X---7  
+		//  |   |  |   |  
+		//  0---+--+   |  
+		//   `. |   `. |  
+		//     `+------+ 
+		Vec3Df midPoint = Vec3Df(avg[0], data.vertices_[3].p[1], data.vertices_[3].p[2]);//(data.vertices_[3].p + data.vertices_[7].p) / 2.0f;
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		left = new BoxTree(leftNode); // Beware: Usage of "new"
+
+									  //	+------+      
+									  //  |`.    |`.    
+									  //  |  `+--+---7  
+									  //  |   |  |   |  
+									  //  0---X--4   |  
+									  //   `. |   `. |  
+									  //     `+------+ 
+		midPoint = Vec3Df(avg[0], data.vertices_[0].p[1], data.vertices_[0].p[2]);//(data.vertices_[0].p + data.vertices_[4].p) / 2.0f;
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		right = new BoxTree(rightNode); // Beware: Usage of "new"
+	}
+	else if (edgeY > edgeX && edgeY > edgeZ)
+	{
+		//	+------+      
+		//  |`.    |`.    
+		//  |  `+------7  
+		//  |   |  |   |  
+		//  0---+--+   X  
+		//   `. |   `. |  
+		//     `+------6 
+		Vec3Df midPoint = Vec3Df(data.vertices_[6].p[0], avg[1], data.vertices_[6].p[2]);//(data.vertices_[6].p + data.vertices_[7].p) / 2.0f;
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		left = new BoxTree(leftNode); // Beware: Usage of "new"
+
+									  //	2------+      
+									  //  |`.    |`.    
+									  //  X  `+------7  
+									  //  |   |  |   |  
+									  //  0---+--+   |  
+									  //   `. |   `. |  
+									  //     `+------+ 
+		midPoint = Vec3Df(data.vertices_[0].p[0], avg[1], data.vertices_[0].p[2]);//(data.vertices_[0].p + data.vertices_[2].p) / 2.0f;
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		right = new BoxTree(rightNode); // Beware: Usage of "new"
+
+	}
+	else
+	{
+		//	+------5      
+		//  |`.    |`X    
+		//  |  `+------7  
+		//  |   |  |   |  
+		//  0---+--+   |  
+		//   `. |   `. |  
+		//     `+------+ 
+		Vec3Df midPoint = Vec3Df(data.vertices_[5].p[0], data.vertices_[5].p[1], avg[2]);//(data.vertices_[5].p + data.vertices_[7].p) / 2.0f;
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		left = new BoxTree(leftNode); // Beware: Usage of "new"
+
+									  //	+------+      
+									  //  |`.    |`.    
+									  //  |  `+--+---7  
+									  //  |   |  |   |  
+									  //  0---|--+   |  
+									  //   `X |   `. |  
+									  //     1------+ 
+		midPoint = Vec3Df(data.vertices_[0].p[0], data.vertices_[0].p[1], avg[2]);//(data.vertices_[0].p + data.vertices_[1].p) / 2.0f;
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		right = new BoxTree(rightNode); // Beware: Usage of "new"
+
+	}
+	left->splitAvg(minTriangles);
+	right->splitAvg(minTriangles);
 }

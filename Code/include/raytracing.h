@@ -81,7 +81,8 @@ public:
 	BoxTree(const AABB data, BoxTree *left, BoxTree *right);
 
 	// splits the box ("data") recursively into smaller parts, and adds them to the tree, until it the amount of triangles within the box is smaller than "minTriangles"
-	void split(int minTriangles);
+	void splitMiddle(int minTriangles);
+	void splitAvg(int minTriangles);
 
 	AABB data;
 	BoxTree *left = NULL;
