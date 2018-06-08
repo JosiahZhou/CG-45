@@ -387,7 +387,8 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 **Axis-Aligned BoundingBox class
 ***********************************************************************************************/
 
-AABB::AABB() {
+AABB::AABB() 
+{
 	minmax_ = std::pair<Vec3Df, Vec3Df>(Vec3Df(), Vec3Df());
 	vertices_ = std::vector<Vertex>();
 	sides_ = std::vector<std::pair<Vec3Df, Vec3Df>>();
@@ -496,7 +497,7 @@ AABB::AABB(const Vec3Df min, const Vec3Df max)
 	for (int i = 0; i < MyMesh.triangles.size(); i++)
 	{
 		// WithinBox/WithinBoxFull: You Decide...
-		if (withinBoxFull(MyMesh.triangles[i]))
+		if (withinBox(MyMesh.triangles[i]))
 		{
 			triangles.push_back(MyMesh.triangles[i]);
 		}
@@ -592,19 +593,22 @@ void AABB::highlightBoxEdges()
 /**********************************************************************************************
 **Axis-Aligned BoundingBox Tree Class
 ***********************************************************************************************/
-BoxTree::BoxTree(const AABB data) {
+BoxTree::BoxTree(const AABB data) 
+{
 	this->data = data;
 	this->left = NULL;
 	this->right = NULL;
 }
 
-BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right) {
+BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right) 
+{
 	this->data = data;
 	this->left = left;
 	this->right = right;
 }
 
-void BoxTree::splitMiddle(int minTriangles) {
+void BoxTree::splitMiddle(int minTriangles)
+{
 	// reduces the boxsize to 'fit' the object (i.e. reduce the size of the boundingbox to the minimum required)
 	if (data.triangles.size() > 0) {
 		Vec3Df min = MyMesh.vertices[data.triangles[0].v[0]].p;
@@ -736,8 +740,8 @@ void BoxTree::splitMiddle(int minTriangles) {
 	//}
 }
 
-void BoxTree::splitAvg(int minTriangles) {
-
+void BoxTree::splitAvg(int minTriangles)
+{
 	// save min and max
 	Vec3Df oldMin = Vec3Df(data.minmax_.first[0], data.minmax_.first[1], data.minmax_.first[2]);
 	Vec3Df oldMax = Vec3Df(data.minmax_.second[0], data.minmax_.second[1], data.minmax_.second[2]);
@@ -746,7 +750,8 @@ void BoxTree::splitAvg(int minTriangles) {
 	Vec3Df newMax = Vec3Df(data.minmax_.second[0], data.minmax_.second[1], data.minmax_.second[2]);
 
 	// reduce empty space of bounding box
-	if (data.triangles.size() > 0) {
+	if (data.triangles.size() > 0)
+	{
 		Vec3Df min = MyMesh.vertices[data.triangles[0].v[0]].p;
 		Vec3Df max = MyMesh.vertices[data.triangles[0].v[0]].p;
 		for (int z = 0; z < data.triangles.size(); z++)
@@ -755,18 +760,20 @@ void BoxTree::splitAvg(int minTriangles) {
 			{
 				for (int x = 0; x < 3; x++)
 				{
-					if (MyMesh.vertices[data.triangles[z].v[y]].p[x] > max[x])
+					if (data.withinBoxFull(data.triangles[z]))
 					{
-						max[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
-					}
-					if (MyMesh.vertices[data.triangles[z].v[y]].p[x] < min[x])
-					{
-						min[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
+						if (MyMesh.vertices[data.triangles[z].v[y]].p[x] > max[x])
+						{
+							max[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
+						}
+						if (MyMesh.vertices[data.triangles[z].v[y]].p[x] < min[x])
+						{
+							min[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
+						}
 					}
 				}
 			}
 		}
-
 		data = AABB(min, max);
 	}
 
