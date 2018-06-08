@@ -288,7 +288,6 @@ void addLeavesOnly(struct BoxTree* curr)
 {
 	if (curr == NULL)return;
 	if (curr->left == NULL && curr->right == NULL) boxes.push_back(curr->data);
-	boxes.push_back(curr->left->data);
 	addLeavesOnly(curr->left);
 	addLeavesOnly(curr->right);
 }
@@ -363,8 +362,8 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		//root.splitMiddle(4000);
 		root.splitAvg(4000);
 
-		addBoxes(&root);
-		//addLeavesOnly(&root);
+		//addBoxes(&root);
+		addLeavesOnly(&root);
 		printTree(&root, 0);
 
 		/*if (rayIntersectionPointBox(rayOrigin, normRayDirection, boxes[0], pin, pout))
