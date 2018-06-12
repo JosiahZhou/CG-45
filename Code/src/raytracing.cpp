@@ -717,26 +717,8 @@ void BoxTree::splitMiddle(int minTriangles)
 
 	}
 
-	// should we delete empty Boxes?
-	/*if (left->data.triangles.empty())
-	{
-		delete left;
-		left = NULL;
-	}
-	else
-	{*/
 	left->splitMiddle(minTriangles);
-	//}
-
-	/*if (right->data.triangles.empty())
-	{
-		delete right;
-		right = NULL;
-	}
-	else
-	{*/
 	right->splitMiddle(minTriangles);
-	//}
 }
 
 void BoxTree::splitAvg(int minTriangles)
