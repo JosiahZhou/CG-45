@@ -36,7 +36,7 @@ void yourDebugDraw();
 void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3Df & rayDestination);
 
 //intersection ray with [Blank]
-bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangle triangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection);
+bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangle triangle, Triangle ignoreTriangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection);
 bool rayIntersectionPointBox(Vec3Df rayOrigin, Vec3Df rayDirection, AABB box, Vec3Df& pin, Vec3Df& pout);
 
 Vec3Df calculateSurfaceNormal(Triangle triangle);
