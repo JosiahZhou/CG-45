@@ -202,6 +202,7 @@ void createLightPointer(){
     MyLightPositionAmount.push_back(15);
     MyLightPositionPower.push_back(1250);
     MyLightPositionRadius.push_back(0.2f);
+    setupMySphereLightPositions();
 }
 
 // react to keyboard input

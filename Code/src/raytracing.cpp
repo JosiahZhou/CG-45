@@ -274,15 +274,25 @@ void setupMySphereLightPositions() {
         
         // Create the list of points.
         std::vector<Vec3Df> currentLightSphere;
-
+        
         // We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
         if (MyLightPositionAmount[i] > 1 && MyLightPositionRadius[i] > 0) {
-                // two is an offset
-                currentLightSphere.push_back(2);
+            
+            // Calculate position for every surface light.
+            for (int i = 0; i < lightSphereAmount; i++) {
+                double theta = 2 * M_PI * rndFloat(seed);
+                double phi = acos(1 - 2 * rndFloat(seed));
+                double x = lightPosition[0] + sin(phi) * cos(theta) * lightSphereWidth;
+                double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
+                double z = lightPosition[2] + cos(phi) * lightSphereWidth;
+                Vec3Df offset = Vec3Df(x, y, z);        
+                currentLightSphere.push_back(offset);
+            }
         } else {
             // We just add the normal light position.
             currentLightSphere.push_back(lightPosition);
         }
+        
         // We add list of points around the sphere into the list.
         MySphereLightPositions.push_back(currentLightSphere);
     }
