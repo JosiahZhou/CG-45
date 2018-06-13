@@ -11,6 +11,10 @@
 class AABB;
 extern Mesh MyMesh; //Main mesh
 extern std::vector<Vec3Df> MyLightPositions;
+extern std::vector<int> MyLightPositionAmount;
+extern std::vector<float> MyLightPositionRadius;
+extern std::vector<int> MyLightPositionPower;
+extern std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 extern Vec3Df MyCameraPosition; //currCamera
 extern unsigned int WindowSize_X;//window resolution width
 extern unsigned int WindowSize_Y;//window resolution height
@@ -33,6 +37,9 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest);
 
 //a function to debug --- you can draw in OpenGL here
 void yourDebugDraw();
+
+// function to setip a sphere around a point (light position).
+void setupMySphereLightPositions();
 
 //want keyboard interaction? Here it is...
 void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3Df & rayDestination);

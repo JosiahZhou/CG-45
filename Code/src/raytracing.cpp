@@ -11,8 +11,10 @@
 #endif
 #include <algorithm> 
 #include "raytracing.h"
+#include <random>
+#include <chrono>
 
-
+int light_speed_sphere = 12391;
 
 //temporary variables
 //these are only used to illustrate 
@@ -40,7 +42,6 @@ void init()
 	//here, we set it to the current location of the camera
     //MyLightPositions.push_back(MyCameraPosition);
     createLightPointer();
-    
 }
 
 
@@ -247,6 +248,44 @@ void yourDebugDraw()
 	////using a glTranslate, it can be shifted to whereever you want
 	////if you produce a sphere renderer, this 
 	////triangulated sphere is nice for the preview
+}
+
+/**
+ * Creates an area of lights (in the form of a sphere) around the light points.
+ * This is necessary for soft shadows. Soft shadows is basically the same principle as hard shadows but then with multiple light sources.
+ */
+void setupMySphereLightPositions() {
+    
+    // Clear old light positions of the sphere.
+    MySphereLightPositions.clear();
+    
+    // Loop through all the light centers.
+    for (int i = 0; i < MyLightPositions.size(); i++) {
+        
+        // We use a seed so that every scene will be the same for all lights,
+        // even though we are using random points.
+        std::mt19937 seed(light_speed_sphere);
+        std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
+        
+        // Retrieve the values of the current light.
+        Vec3Df lightPosition = MyLightPositions[i];
+        float lightSphereWidth = MyLightPositionRadius[i];
+        int lightSphereAmount = MyLightPositionAmount[i];
+        
+        // Create the list of points.
+        std::vector<Vec3Df> currentLightSphere;
+
+        // We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
+        if (MyLightPositionAmount[i] > 1 && MyLightPositionRadius[i] > 0) {
+                // two is an offset
+                currentLightSphere.push_back(2);
+        } else {
+            // We just add the normal light position.
+            currentLightSphere.push_back(lightPosition);
+        }
+        // We add list of points around the sphere into the list.
+        MySphereLightPositions.push_back(currentLightSphere);
+    }
 }
 
 
