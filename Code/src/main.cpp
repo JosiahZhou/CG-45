@@ -31,6 +31,11 @@ Vec3Df MyCameraPosition;
 //used for the real-time rendering is NOT one of these, 
 //but following the camera instead.
 std::vector<Vec3Df> MyLightPositions;
+std::vector<int> MyLightPositionAmount;
+std::vector<float> MyLightPositionRadius;
+std::vector<int> MyLightPositionPower;
+int MyLightPositionsPointer = 0;
+std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 
 //Main mesh 
 Mesh MyMesh; 
@@ -55,8 +60,6 @@ void animate()
 	MyCameraPosition=getCameraPosition();
 	glutPostRedisplay();
 }
-
-
 
 void display(void);
 void reshape(int w, int h);
@@ -193,14 +196,13 @@ void produceRay(int x_I, int y_I, Vec3Df * origin, Vec3Df * dest)
 		dest->p[2]=float(z);
 }
 
-
-
-
-
-
-
-
-
+// Setup of the light pointer - this is called in the init of the raytracer itself.
+void createLightPointer(){
+    MyLightPositions.push_back(getCameraPosition());
+    MyLightPositionAmount.push_back(15);
+    MyLightPositionPower.push_back(1250);
+    MyLightPositionRadius.push_back(0.2f);
+}
 
 // react to keyboard input
 void keyboard(unsigned char key, int x, int y)

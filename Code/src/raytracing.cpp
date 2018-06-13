@@ -13,6 +13,7 @@
 #include "raytracing.h"
 
 
+
 //temporary variables
 //these are only used to illustrate 
 //a simple debug drawing. A ray 
@@ -37,7 +38,9 @@ void init()
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
 	//here, we set it to the current location of the camera
-	MyLightPositions.push_back(MyCameraPosition);
+    //MyLightPositions.push_back(MyCameraPosition);
+    createLightPointer();
+    
 }
 
 
