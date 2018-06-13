@@ -298,6 +298,23 @@ void setupMySphereLightPositions() {
     }
 }
 
+/**
+ * Returns the intensity of the light.
+ *
+ * @param distance the distance between the object and the light.
+ * @param power the power of the light.
+ * @param minimum the minimum intensity of the light.
+ * @return the intensity of the light between the object and the light.
+ */
+double intensityOfLight(const float &distance, const float &power, const float &minimum) {
+    double intensity = 1 / (4 * M_PI * distance * distance * (1 / power) + 1);
+    if (intensity > minimum) {
+        return intensity;
+    } else {
+        return minimum;
+    }
+}
+
 
 struct BoxTree {
 	AABB data;

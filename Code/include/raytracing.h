@@ -48,6 +48,9 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangle triangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection);
 bool rayIntersectionPointBox(Vec3Df rayOrigin, Vec3Df rayDirection, AABB box, Vec3Df& pin, Vec3Df& pout);
 
+// calculate the intensity of light
+double intensityOfLight(const float &distance, const float &power, const float &minimum);
+
 Vec3Df calculateSurfaceNormal(Triangle triangle);
 
 
