@@ -40,6 +40,7 @@ bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangl
 bool rayIntersectionPointBox(Vec3Df rayOrigin, Vec3Df rayDirection, AABB box, Vec3Df& pin, Vec3Df& pout);
 
 Vec3Df calculateSurfaceNormal(Triangle triangle);
+Vec3Df calculateCentroid(const Triangle t);
 
 /**********************************************************************************************
 **Axis-Aligned BoundingBox class

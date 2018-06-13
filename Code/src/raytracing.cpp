@@ -19,7 +19,11 @@
 Vec3Df testRayOrigin;
 Vec3Df testRayDestination;
 
+// define function before implementation
+BoxTree initBoxTree();
+
 std::vector<AABB> boxes;
+BoxTree tree = BoxTree(AABB());
 
 //use this function for any preprocessing of the mesh.
 void init()
@@ -33,6 +37,8 @@ void init()
 	//otherwise the application will not load properly
 	MyMesh.loadMesh("dodgeColorTest.obj", true);
 	MyMesh.computeVertexNormals();
+
+	tree = initBoxTree();
 
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
@@ -237,15 +243,11 @@ void yourDebugDraw()
 	glEnd();
 	glPopAttrib();
 
-
-	// Traverse the tree
-	//tree.getValue().highlightBoxEdges();
-
+	// draw the bounding boxes
 	for (AABB box : boxes)
 	{
 		box.highlightBoxEdges();
 	}
-
 
 	//draw whatever else you want...
 	////glutSolidSphere(1,10,10);
@@ -270,26 +272,81 @@ void printTree(struct BoxTree* curr, int depth)
 			printf("%s   ", rec[i] ? "|" : "  ");
 	printf("%d\n", curr->data.triangles.size());
 	rec[depth] = 1;
-	printTree(curr->left, depth + 1);
-	rec[depth] = 0;
 	printTree(curr->right, depth + 1);
+	rec[depth] = 0;
+	printTree(curr->left, depth + 1);
 }
 
 // Recursively adds the nodes of the BoxTree to "boxes" whom elements will be drawn on the screen.
-void addBoxes(struct BoxTree* curr)
+void showBoxes(struct BoxTree* curr)
 {
 	if (curr == NULL)return;
 	boxes.push_back(curr->data);
-	addBoxes(curr->left);
-	addBoxes(curr->right);
+	showBoxes(curr->left);
+	showBoxes(curr->right);
 }
 
-void addLeavesOnly(struct BoxTree* curr)
+void showLeavesOnly(struct BoxTree* curr)
 {
 	if (curr == NULL)return;
 	if (curr->left == NULL && curr->right == NULL) boxes.push_back(curr->data);
-	addLeavesOnly(curr->left);
-	addLeavesOnly(curr->right);
+	showLeavesOnly(curr->left);
+	showLeavesOnly(curr->right);
+}
+
+void showIntersectionBoxOnly(Vec3Df rayOrigin, Vec3Df rayDirection, struct BoxTree* curr)
+{
+	if (curr == NULL)return;
+	if (rayIntersectionPointBox(rayOrigin, rayDirection, curr->data, Vec3Df(), Vec3Df())) boxes.push_back(curr->data);
+	showIntersectionBoxOnly(rayOrigin, rayDirection, curr->left);
+	showIntersectionBoxOnly(rayOrigin, rayDirection, curr->right);
+}
+
+void showIntersectionLeafOnly(Vec3Df rayOrigin, Vec3Df rayDirection, struct BoxTree* curr)
+{
+	if (curr == NULL)return;
+	if (curr->left == NULL && curr->right == NULL && rayIntersectionPointBox(rayOrigin, rayDirection, curr->data, Vec3Df(), Vec3Df())) boxes.push_back(curr->data);
+	showIntersectionLeafOnly(rayOrigin, rayDirection, curr->left);
+	showIntersectionLeafOnly(rayOrigin, rayDirection, curr->right);
+}
+
+BoxTree initBoxTree()
+{
+	std::pair<Vec3Df, Vec3Df> minMax = getMinAndMaxVertex();
+	AABB aabb = AABB(minMax.first, minMax.second);
+	return BoxTree(aabb);
+}
+
+/** 
+ * Gets the first box int the tree "curr", that intersects with the ray.
+ * This Function should only be called within these pre-conditions:
+ * 1 - BoxTree *curr is not NULL
+ * 2 - The ray, atleast, intersects the overlapping boundingbox, or in other words the initial "curr->data".
+**/
+AABB getFirstIntersectedBox(Vec3Df rayOrigin, Vec3Df rayDirection, BoxTree* curr, Vec3Df& pin, Vec3Df& pout)
+{
+	if (curr->left == NULL && curr->right == NULL) // if we hit a leaf
+	{
+		return curr->data;
+	}
+	else if (curr->left == NULL)
+	{
+		return getFirstIntersectedBox(rayOrigin, rayDirection, curr->right, pin, pout);
+	}
+	else if (curr->right == NULL)
+	{
+		return getFirstIntersectedBox(rayOrigin, rayDirection, curr->left, pin, pout);
+	}
+	else if (rayIntersectionPointBox(rayOrigin, rayDirection, curr->left->data, pin, pout))
+	{
+		Vec3Df testpin;
+		if (rayIntersectionPointBox(rayOrigin, rayDirection, curr->right->data, testpin, Vec3Df()) && Vec3Df::distance(testpin, rayOrigin) < Vec3Df::distance(pin, rayOrigin))
+		{
+			return getFirstIntersectedBox(rayOrigin, rayDirection, curr->right, pin, pout);
+		}
+		return getFirstIntersectedBox(rayOrigin, rayDirection, curr->left, pin, pout);
+	}
+	return getFirstIntersectedBox(rayOrigin, rayDirection, curr->right, pin, pout);
 }
 
 //yourKeyboardFunc is used to deal with keyboard input.
@@ -354,17 +411,23 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 	break;
 	case 'd': // constructs axis aligned bounding boxes
 	{
-		std::pair<Vec3Df, Vec3Df> minMax = getMinAndMaxVertex();
-		AABB aabb = AABB(minMax.first, minMax.second);
-		Vec3Df pin, pout;
+		boxes.clear();
 
-		BoxTree root = BoxTree(aabb);
-		//root.splitMiddle(4000);
-		root.splitAvg(4000);
+		// Splitting the tree
+		//tree.splitMiddle(4000);
+		tree.splitAvg(4000);
 
-		//addBoxes(&root);
-		addLeavesOnly(&root);
-		printTree(&root, 0);
+		// Drawing the boxes
+		//showBoxes(&tree);
+		//showLeavesOnly(&tree);
+		//showIntersectionBoxOnly(rayOrigin, normRayDirection, &tree);
+		showIntersectionLeafOnly(rayOrigin, normRayDirection, &tree);
+
+		// Draw smallest Intersected Box
+		//Vec3Df pin, pout;
+		//boxes.push_back(getFirstIntersectedBox(rayOrigin, rayDestination - rayOrigin, &tree, pin, pout));
+
+		printTree(&tree, 0);
 
 		/*if (rayIntersectionPointBox(rayOrigin, normRayDirection, boxes[0], pin, pout))
 		{
@@ -381,12 +444,11 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 }
 
 
-
 /**********************************************************************************************
 **Axis-Aligned BoundingBox class
 ***********************************************************************************************/
 
-AABB::AABB() 
+AABB::AABB()
 {
 	minmax_ = std::pair<Vec3Df, Vec3Df>(Vec3Df(), Vec3Df());
 	vertices_ = std::vector<Vertex>();
@@ -592,14 +654,14 @@ void AABB::highlightBoxEdges()
 /**********************************************************************************************
 **Axis-Aligned BoundingBox Tree Class
 ***********************************************************************************************/
-BoxTree::BoxTree(const AABB data) 
+BoxTree::BoxTree(const AABB data)
 {
 	this->data = data;
 	this->left = NULL;
 	this->right = NULL;
 }
 
-BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right) 
+BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right)
 {
 	this->data = data;
 	this->left = left;
