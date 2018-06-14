@@ -56,7 +56,7 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("boxCone.obj", true);
+	MyMesh.loadMesh("box.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -84,8 +84,10 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 	float minDist = INFINITY;
 	Vec3Df foundIntersection;
 	Triangle t;
+	bool intersect;
 	for (int b = 0; b < boxes.size(); b++)
 	{
+		intersect = false;
 		AABB box = boxes[b];
 		Vec3Df pin, pout;
 		if (rayIntersectionPointBox(origin, direction, box, pin, pout))
@@ -97,18 +99,22 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 				Triangle triangle = box.triangles[i];
 				if (rayIntersectionPointTriangle(origin, direction, triangle, Triangle(), pointOfIntersection, distanceRay))
 				{
-					if (minDist > distanceRay) {
+					if (minDist > distanceRay && distanceRay > 0) {
 						t = triangle;
 						foundIntersection = pointOfIntersection;
 						minDist = distanceRay;
+						intersect = true;
 					}
 				}
 			}
-			if (isInShadow(foundIntersection, t)) {
-				return Vec3Df(0, 0, 1); // shadow == blue
-			}
-			else {
-				return Vec3Df(1, 0, 0); // light == red
+			if (intersect) {
+				if (isInShadow(foundIntersection, t)) {
+					return Vec3Df(0, 0, 0); // shadow == black
+				}
+				else {
+					// color and other stuff here as well...
+					return Vec3Df(1, 1, 1); // light == white
+				}
 			}
 		}
 		
@@ -174,7 +180,7 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 					float distanceRay;
 					Triangle triangle = box.triangles[i];
 					// if an intersection gets found, put the resulting point and triangle in the result vars
-					if (rayIntersectionPointTriangle(ray.origin, ray.direction, triangle, intersectionTriangle, intersect, distanceRay)) {
+					if (rayIntersectionPointTriangle(ray.origin, ray.direction, triangle, Triangle(), intersect, distanceRay)) {
 						if (distanceRay > 0) {
 							minDist = distanceRay;
 							return true;
@@ -269,7 +275,13 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 }
 
 void ComputeDirectLight(Vec3Df pointOfIntersection, Vec3Df& directColor) {
-	directColor = Vec3Df(0,0,0);
+	if (isInShadow(pointOfIntersection, Triangle())) {
+		directColor = Vec3Df(0,0,0); // Hard shadow, item is in the shadow thus color is black
+	}
+
+		/*
+		Better if this method is removed or the return should be a boolean, it is not necessary  to calculate colors, reflections if there's a shadow cast on the triangle/intersection.
+		*/
 
 	return;
 }
@@ -325,7 +337,7 @@ bool ComputeRefractedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle trian
 bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangle triangle, Triangle ignoreTriangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection)
 {
 	if (ignoreTriangle == triangle) return false;
-	float epsilon = 0.01f;
+	float epsilon = 0.001f;
 	if (fabs(triangle.v[0] - ignoreTriangle.v[0]) < epsilon)
 		if (fabs(triangle.v[1] - ignoreTriangle.v[1]) < epsilon)
 			if (fabs(triangle.v[2] - ignoreTriangle.v[2]) < epsilon)
@@ -698,15 +710,15 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 			Triangle t;
 			Vec3Df intersection = DebugRay(testRayOrigin, testRayDestination, t);
 			testRayDestination = intersection;
-			std::cout << "Intersection Point: " << testRayDestination <<std::endl;
-			std::cout << "Intersection Point: " << intersection <<std::endl;
+			/*std::cout << "Intersection Point: " << testRayDestination <<std::endl;
+			std::cout << "Intersection Point: " << intersection <<std::endl;*/
 
 			if (isInShadow(intersection, t)) {
-				std::cout << "SHADOW" << std::endl;
+				std::cout << "Intersection lies in the : SHADOW" << std::endl;
 
 			}
 			else {
-				std::cout << "LIT" << std::endl;
+				std::cout << "Intersection lies in the : LIGHT" << std::endl;
 			}
 
 		}
