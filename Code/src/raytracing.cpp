@@ -86,12 +86,11 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 		Vec3Df pin, pout;
 		if (rayIntersectionPointBox(origin, direction, box, pin, pout))
 		{
-			for (int i = 0; i < MyMesh.triangles.size(); i++)
+			for (int i = 0; i < box.triangles.size(); i++)
 			{
 				Vec3Df pointOfIntersection;
 				float distanceRay;
-				Triangle triangle = MyMesh.triangles[i];
-
+				Triangle triangle = box.triangles[i];
 				if (rayIntersectionPointTriangle(origin, direction, triangle, Triangle(), pointOfIntersection, distanceRay))
 				{
 					return Vec3Df(dest[0], dest[1], dest[2]);
