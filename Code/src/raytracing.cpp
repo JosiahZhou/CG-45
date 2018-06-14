@@ -136,8 +136,7 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 }
 bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 	for (Vec3Df light : MyLightPositions) {
-		Vec3Df tolight = light - intersection;
-		Vec3Df origin = intersection + 0.001f*tolight;
+		Vec3Df origin = intersection;;
 		Vec3Df dest = light;
 		Triangle foundTriangle;
 		float minDist = INFINITY;
@@ -145,6 +144,7 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 		// Copied code from performRayTracing
 		/*********************************************************/
 		Vec3Df direction = dest - origin;
+		origin = origin + 0.001f * direction;
 		float distance;
 		Ray ray;
 		ray.origin = origin;
@@ -162,7 +162,7 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 					float distanceRay;
 					Triangle triangle = box.triangles[i];
 					// if an intersection gets found, put the resulting point and triangle in the result vars
-					if (rayIntersectionPointTriangle(ray.origin, ray.direction, triangle, Triangle(), intersect, distanceRay)) {
+					if (rayIntersectionPointTriangle(ray.origin, ray.direction, triangle, intersectionTriangle, intersect, distanceRay)) {
 						if (minDist > distanceRay) {
 							minDist = distanceRay;
 							return true;
@@ -314,6 +314,11 @@ bool ComputeRefractedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle trian
 bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangle triangle, Triangle ignoreTriangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection)
 {
 	if (ignoreTriangle == triangle) return false;
+	float epsilon = 0.01f;
+	if (fabs(triangle.v[0] - ignoreTriangle.v[0]) < epsilon)
+		if (fabs(triangle.v[1] - ignoreTriangle.v[1]) < epsilon)
+			if (fabs(triangle.v[2] - ignoreTriangle.v[2]) < epsilon)
+				return false;
 
 	Vec3Df edges[2];
 	float t;
@@ -579,7 +584,7 @@ BoxTree initBoxTree()
 
 void initAccelerationStructure()
 {
-	tree.splitAvg(18000);
+	tree.splitAvg(1800000);
 	//showBoxes(&tree);
 	showBoxes(&tree);
 	printTree(&tree, 0);
