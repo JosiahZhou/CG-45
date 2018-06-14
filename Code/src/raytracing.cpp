@@ -56,7 +56,7 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("dodgeColorTest.obj", true);
+	MyMesh.loadMesh("box.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -105,13 +105,16 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 				}
 			}
 		}
+		if (isInShadow(foundIntersection, t)) {
+			return Vec3Df(0, 0, 1); // shadow == blue
+		}
+		else {
+			return Vec3Df(1, 0, 0); // light == red
+		}
 	}
 	//caclulate shadows --> only for the minimum distance ( closestIntersectionPoint)
 	// color and other stuff here as well...
-	if (isInShadow(foundIntersection, t)) {
-		return Vec3Df(0, 0, 1); // shadow == blue
-	}
-	return Vec3Df(1, 0, 0); // light == red
+	return Vec3Df(0, 0, 0); 
 	//return Vec3Df(dest[0], dest[1], dest[2]);
 }
 Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {

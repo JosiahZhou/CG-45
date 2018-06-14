@@ -36,8 +36,8 @@ std::vector<Vec3Df> MyLightPositions;
 //Main mesh 
 Mesh MyMesh; 
 
-unsigned int WindowSize_X = 200;  // resolution X
-unsigned int WindowSize_Y = 150;  // resolution Y
+unsigned int WindowSize_X = 1080;  // resolution X
+unsigned int WindowSize_Y = 1080;  // resolution Y
 
 
 
@@ -265,6 +265,7 @@ void keyboard(unsigned char key, int x, int y)
 			percentage = (double)y / (double)WindowSize_Y * 100;
 			auto end = std::chrono::system_clock::now();
 			std::chrono::duration<double> diff = end - start;
+			
 			printf("\rPercentage done: [%6.4f%%] \tElapsed time : [%4.2f]", percentage, diff.count());
 
 		}
