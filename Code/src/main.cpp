@@ -262,11 +262,11 @@ void keyboard(unsigned char key, int x, int y)
 				//store the result in an image 
 				result.setPixel(x, y, RGBValue(rgb[0], rgb[1], rgb[2]));
 			}
-			percentage = (double)y / (double)WindowSize_Y * 100;
+			percentage = (double)y / (double)(WindowSize_Y-1) * 100;
 			auto end = std::chrono::system_clock::now();
 			std::chrono::duration<double> diff = end - start;
 			
-			printf("\rPercentage done: [%6.4f%%] \tElapsed time : [%4.2f]", percentage, diff.count());
+			printf("\rPercentage done: [%6.4f%%] \tElapsed time (seconds) : [%4.2f]", percentage, diff.count());
 
 		}
 		result.writeImage("result.bmp");
