@@ -81,6 +81,9 @@ void init()
 Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 {
 	Vec3Df direction = dest - origin;
+	float minDist = INFINITY;
+	Vec3Df foundIntersection;
+	Triangle t;
 	for (int b = 0; b < boxes.size(); b++)
 	{
 		AABB box = boxes[b];
@@ -94,16 +97,21 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 				Triangle triangle = box.triangles[i];
 				if (rayIntersectionPointTriangle(origin, direction, triangle, Triangle(), pointOfIntersection, distanceRay))
 				{
-					
-					return Vec3Df(dest[0], dest[1], dest[2]);
+					if (minDist > distanceRay) {
+						t = triangle;
+						foundIntersection = pointOfIntersection;
+						minDist = distanceRay;
+					}
 				}
 			}
 		}
 	}
 	//caclulate shadows --> only for the minimum distance ( closestIntersectionPoint)
 	// color and other stuff here as well...
-
-	return Vec3Df(0, 0, 0);
+	if (isInShadow(foundIntersection, t)) {
+		return Vec3Df(0, 0, 1); // shadow == blue
+	}
+	return Vec3Df(1, 0, 0); // light == red
 	//return Vec3Df(dest[0], dest[1], dest[2]);
 }
 Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
