@@ -29,10 +29,10 @@ void init()
 {
 	//load the mesh file
 	//please realize that not all OBJ files will successfully load.
-	//Nonetheless, if they come from Blender, they should, if they 
+	//Nonetheless, if they come from Blender, they should, if they
 	//are exported as WavefrontOBJ.
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
-	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj", 
+	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
 	MyMesh.loadMesh("dodgeColorTest.obj", true);
 	MyMesh.computeVertexNormals();
@@ -43,7 +43,6 @@ void init()
     //MyLightPositions.push_back(MyCameraPosition);
     createLightPointer();
 }
-
 
 //return the color of your pixel.
 Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
@@ -240,7 +239,6 @@ void yourDebugDraw()
 	{
 		box.highlightBoxEdges();
 	}
-
 
 	//draw whatever else you want...
 	////glutSolidSphere(1,10,10);
@@ -500,6 +498,31 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		}
 	}
 	break;
+    case 'l':
+            if (MyLightPositionsPointer < MyLightPositions.size() - 1) {
+                MyLightPositionsPointer++;
+            } else {
+                MyLightPositionsPointer = 0;
+            }
+            break;
+    case 'r':
+            MyLightPositionRadius[MyLightPositionsPointer] += .01f;
+            setupMySphereLightPositions();
+            break;
+    case 'R':
+            MyLightPositionRadius[MyLightPositionsPointer] -= .01f;
+            if (MyLightPositionRadius[MyLightPositionsPointer] < 0) MyLightPositionRadius[MyLightPositionsPointer] = 0;
+            else setupMySphereLightPositions();
+            break;
+    case 'a':
+            MyLightPositionAmount[MyLightPositionsPointer] += 1;
+            setupMySphereLightPositions();
+            break;
+    case 'A':
+            MyLightPositionAmount[MyLightPositionsPointer] -= 1;
+            if (MyLightPositionAmount[MyLightPositionsPointer] < 1) MyLightPositionAmount[MyLightPositionsPointer] = 1;
+            else setupMySphereLightPositions();
+            break;
 	default:
 		break;
 	}
