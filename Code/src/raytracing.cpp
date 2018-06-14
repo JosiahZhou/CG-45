@@ -106,7 +106,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 	return Vec3Df(0, 0, 0);
 	//return Vec3Df(dest[0], dest[1], dest[2]);
 }
-Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle t) {
+Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 	Vec3Df direction = dest - origin;
 	float minDist = INFINITY;
 	Vec3Df foundIntersection;
@@ -146,14 +146,37 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 		/*********************************************************/
 		Vec3Df direction = dest - origin;
 		float distance;
-		Ray r;
-		r.origin = origin;
-		r.direction = direction;
-		r.insideMaterial = false;
-		bool hitSomething = Intersect(0, r, intersection, intersectionTriangle, Triangle(), distance);
-		if (hitSomething) {
-			return hitSomething;
+		Ray ray;
+		ray.origin = origin;
+		ray.direction = direction;
+		ray.insideMaterial = false;
+		//bool hitSomething = Intersect(0, ray, intersection, intersectionTriangle, Triangle(), distance);
+
+		for (int b = 0; b < boxes.size(); b++) {
+			AABB box = boxes[b];
+			Vec3Df pin, pout;
+			// then trace the ray down to the right triangle
+			if (rayIntersectionPointBox(ray.origin, ray.direction, box, pin, pout)) {
+				for (int i = 0; i < box.triangles.size(); i++) {
+					Vec3Df intersect;
+					float distanceRay;
+					Triangle triangle = box.triangles[i];
+					// if an intersection gets found, put the resulting point and triangle in the result vars
+					if (rayIntersectionPointTriangle(ray.origin, ray.direction, triangle, Triangle(), intersect, distanceRay)) {
+						if (minDist > distanceRay) {
+							minDist = distanceRay;
+							return true;
+						}
+						// if (distanceRay < 0) pointOfIntersection = pointOfIntersection + 5*ray.direction;
+
+						return true;
+					}
+				}
+			}
 		}
+		/*if (hitSomething) {
+			return hitSomething;
+		}*/
 	}
 	return false;
 }
@@ -458,19 +481,19 @@ void yourDebugDraw()
 
 
 	//as an example: we draw the test ray, which is set by the keyboard function
-	// glPushAttrib(GL_ALL_ATTRIB_BITS);
-	// glDisable(GL_LIGHTING);
-	// glBegin(GL_LINES);
-	// glColor3f(0, 1, 1);
-	// glVertex3f(testRayOrigin[0], testRayOrigin[1], testRayOrigin[2]);
-	// glColor3f(0, 0, 1);
-	// glVertex3f(testRayDestination[0], testRayDestination[1], testRayDestination[2]);
-	// glEnd();
-	// glPointSize(10);
-	// glBegin(GL_POINTS);
-	// glVertex3fv(MyLightPositions[0].pointer());
-	// glEnd();
-	// glPopAttrib();
+	 glPushAttrib(GL_ALL_ATTRIB_BITS);
+	 glDisable(GL_LIGHTING);
+	 glBegin(GL_LINES);
+	 glColor3f(0, 1, 1);
+	 glVertex3f(testRayOrigin[0], testRayOrigin[1], testRayOrigin[2]);
+	 glColor3f(0, 0, 1);
+	 glVertex3f(testRayDestination[0], testRayDestination[1], testRayDestination[2]);
+	 glEnd();
+	 glPointSize(10);
+	 glBegin(GL_POINTS);
+	 glVertex3fv(MyLightPositions[0].pointer());
+	 glEnd();
+	 glPopAttrib();
 
 	// draw the bounding boxes
 	for (AABB box : boxes)
@@ -654,12 +677,13 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 			}
 		}
 		break;
-	case 'p':
+	case 's':
 		{
 			Triangle t;
 			Vec3Df intersection = DebugRay(testRayOrigin, testRayDestination, t);
 			testRayDestination = intersection;
 			std::cout << "Intersection Point: " << testRayDestination <<std::endl;
+			std::cout << "Intersection Point: " << intersection <<std::endl;
 
 			if (isInShadow(intersection, t)) {
 				std::cout << "SHADOW" << std::endl;
