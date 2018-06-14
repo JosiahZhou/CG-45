@@ -105,10 +105,10 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 	return Vec3Df(0, 0, 0);
 	//return Vec3Df(dest[0], dest[1], dest[2]);
 }
-bool isInShade(Vec3Df & intersection, Triangle & intersectionTriangle) {
+bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 	for (Vec3Df light : MyLightPositions) {
 		Vec3Df direction = intersection - light;
-		Vec3Df origin = light;
+		Vec3Df origin = intersection;
 		Vec3Df dest = intersection;
 		Triangle foundTriangle;
 		float minDist = INFINITY;

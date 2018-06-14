@@ -29,7 +29,7 @@ void produceRay(int x_I, int y_I, Vec3Df & origin, Vec3Df & dest);
 //your main function to rewrite
 Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest);
 //Shadow test
-bool isInShade(Vec3Df & intersection, Triangle & triangle);
+bool isInShadow(Vec3Df & intersection, Triangle & triangle);
 //a function to debug --- you can draw in OpenGL here
 void yourDebugDraw();
 
