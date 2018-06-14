@@ -11,11 +11,17 @@
 class AABB;
 extern Mesh MyMesh; //Main mesh
 extern std::vector<Vec3Df> MyLightPositions;
+extern std::vector<int> MyLightPositionAmount;
+extern std::vector<float> MyLightPositionRadius;
+extern std::vector<int> MyLightPositionPower;
+extern std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 extern Vec3Df MyCameraPosition; //currCamera
 extern unsigned int WindowSize_X;//window resolution width
 extern unsigned int WindowSize_Y;//window resolution height
 extern unsigned int RayTracingResolutionX;  // largeur fenetre
 extern unsigned int RayTracingResolutionY;  // largeur fenetre
+extern int MyLightPositionsPointer;
+extern void createLightPointer();
 
 //use this function for any preprocessing of the mesh.
 void init();
@@ -36,12 +42,18 @@ bool isInShadow(Vec3Df & intersection, Triangle & triangle);
 //a function to debug --- you can draw in OpenGL here
 void yourDebugDraw();
 
+// function to setip a sphere around a point (light position).
+void setupMySphereLightPositions();
+
 //want keyboard interaction? Here it is...
 void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3Df & rayDestination);
 
 //intersection ray with [Blank]
 bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangle triangle, Triangle ignoreTriangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection);
 bool rayIntersectionPointBox(Vec3Df rayOrigin, Vec3Df rayDirection, AABB box, Vec3Df& pin, Vec3Df& pout);
+
+// calculate the intensity of light
+double intensityOfLight(const float &distance, const float &power, const float &minimum);
 
 Vec3Df calculateSurfaceNormal(Triangle triangle);
 Vec3Df calculateCentroid(const Triangle t);
@@ -75,7 +87,6 @@ public:
 	//triangles residing inside the bounding box
 	std::vector<Triangle> triangles;
 };
-
 
 /**********************************************************************************************
 **Axis-Aligned BoundingBox Tree class
