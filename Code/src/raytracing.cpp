@@ -66,15 +66,51 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 				Triangle triangle = MyMesh.triangles[i];
 				if (rayIntersectionPointTriangle(origin, direction, triangle, pointOfIntersection, distanceRay))
 				{
+					
 					return Vec3Df(dest[0], dest[1], dest[2]);
 				}
 			}
 		}
 	}
+	//caclulate shadows --> only for the minimum distance ( closestIntersectionPoint)
+	// color and other stuff here as well...
+
 	return Vec3Df(0, 0, 0);
 	//return Vec3Df(dest[0], dest[1], dest[2]);
 }
+bool isInShade(Vec3Df & intersection, Triangle & intersectionTriangle) {
+	for (Vec3Df light : MyLightPositions) {
+		Vec3Df direction = intersection - light;
+		Vec3Df origin =  light;
+		Vec3Df dest = intersection;
+		float minDist = INFINITY;
+		/*********************************************************/
+		// Copied code from performRayTracing
+		/*********************************************************/
+		Vec3Df direction = dest - origin;
+		for (int b = 0; b < boxes.size(); b++)
+		{
+			AABB box = boxes[b];
+			Vec3Df pin, pout;
+			if (rayIntersectionPointBox(origin, direction, box, pin, pout))
+			{
+				for (int i = 0; i < MyMesh.triangles.size(); i++)
+				{
+					Vec3Df pointOfIntersection;
+					float distanceRay;
+					Triangle triangle = MyMesh.triangles[i];
+					if (rayIntersectionPointTriangle(origin, direction, triangle, pointOfIntersection, distanceRay))
+					{
+						if (minDist > distanceRay) {
+							minDist = distanceRay;
 
+						}
+					}
+				}
+			}
+		}
+	}
+}
 /**
  * Moller and Trumbore algorithnm: point(u,v) = (1-u-v)*p0 + u*p1 + v*p2
  * returns true if the ray intersects with the triangle.
