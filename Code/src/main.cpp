@@ -9,6 +9,7 @@
 #include <windows.h>
 #endif
 #include <stdlib.h>
+#include <chrono>
 #include <math.h>
 #include <assert.h>
 #include "raytracing.h"
@@ -35,8 +36,8 @@ std::vector<Vec3Df> MyLightPositions;
 //Main mesh 
 Mesh MyMesh; 
 
-unsigned int WindowSize_X = 800;  // resolution X
-unsigned int WindowSize_Y = 800;  // resolution Y
+unsigned int WindowSize_X = 200;  // resolution X
+unsigned int WindowSize_Y = 150;  // resolution Y
 
 
 
@@ -239,7 +240,9 @@ void keyboard(unsigned char key, int x, int y)
 		produceRay(WindowSize_X - 1, 0, &origin10, &dest10);
 		produceRay(WindowSize_X - 1, WindowSize_Y - 1, &origin11, &dest11);
 
-		float doneLines = 0.0f;
+		double percentage = 0.0;
+		std::cout << " " << std::endl;
+		auto start = std::chrono::system_clock::now();
 
 		for (unsigned int y = 0; y < WindowSize_Y; ++y){
 			for (unsigned int x = 0; x < WindowSize_X; ++x)
@@ -259,9 +262,11 @@ void keyboard(unsigned char key, int x, int y)
 				//store the result in an image 
 				result.setPixel(x, y, RGBValue(rgb[0], rgb[1], rgb[2]));
 			}
-			doneLines++;
-			float progress = doneLines / WindowSize_Y * 100;
-			cout << progress << '\r';
+			percentage = (double)y / (double)WindowSize_Y * 100;
+			auto end = std::chrono::system_clock::now();
+			std::chrono::duration<double> diff = end - start;
+			printf("\rPercentage done: [%6.4f%%] \tElapsed time : [%4.2f]", percentage, diff.count());
+
 		}
 		result.writeImage("result.bmp");
 		break;
