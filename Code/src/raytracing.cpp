@@ -21,6 +21,7 @@ Vec3Df testRayDestination;
 
 // define function before implementation
 BoxTree initBoxTree();
+void initAccelerationStructure();
 
 std::vector<AABB> boxes;
 BoxTree tree = BoxTree(AABB());
@@ -39,6 +40,7 @@ void init()
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
+	initAccelerationStructure();
 
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
@@ -317,6 +319,14 @@ BoxTree initBoxTree()
 	return BoxTree(aabb);
 }
 
+void initAccelerationStructure()
+{
+	tree.splitAvg(4000);
+	//showBoxes(&tree);
+	showLeavesOnly(&tree);
+	printTree(&tree, 0);
+}
+
 /** 
  * Gets the first box int the tree "curr", that intersects with the ray.
  * This Function should only be called within these pre-conditions:
@@ -418,10 +428,10 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		tree.splitAvg(4000);
 
 		// Drawing the boxes
-		//showBoxes(&tree);
+		showBoxes(&tree);
 		//showLeavesOnly(&tree);
 		//showIntersectionBoxOnly(rayOrigin, normRayDirection, &tree);
-		showIntersectionLeafOnly(rayOrigin, normRayDirection, &tree);
+		//showIntersectionLeafOnly(rayOrigin, normRayDirection, &tree);
 
 		// Draw smallest Intersected Box
 		//Vec3Df pin, pout;
