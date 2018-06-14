@@ -44,6 +44,7 @@ void ComputeDirectLight(Vec3Df pointOfIntersection, Vec3Df& directColor);
 bool ComputeReflectedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle triangleOfIntersection, Ray& reflectedRay);
 bool ComputeRefractedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle triangleOfIntersection, Ray& refractedRay);
 void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle);
+bool Intersect(unsigned int level, const Ray ray, Vec3Df& pointOfIntersection, Triangle& triangleOfIntersection, Triangle ignoreTriangle, float& distance);
 
 //use this function for any preprocessing of the mesh.
 void init()
@@ -105,39 +106,56 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 	return Vec3Df(0, 0, 0);
 	//return Vec3Df(dest[0], dest[1], dest[2]);
 }
+Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle t) {
+	Vec3Df direction = dest - origin;
+	float minDist = INFINITY;
+	Vec3Df foundIntersection;
+	for (int b = 0; b < boxes.size(); b++)
+	{
+		AABB box = boxes[b];
+		Vec3Df pin, pout;
+		if (rayIntersectionPointBox(origin, direction, box, pin, pout))
+		{
+			for (int i = 0; i < box.triangles.size(); i++)
+			{
+				Vec3Df pointOfIntersection;
+				float distanceRay;
+				Triangle triangle = box.triangles[i];
+				if (rayIntersectionPointTriangle(origin, direction, triangle, Triangle(), pointOfIntersection, distanceRay))
+				{
+					if (minDist > distanceRay) {
+						t = triangle;
+						foundIntersection = pointOfIntersection;
+						minDist = distanceRay;
+					}
+				}
+			}
+		}
+	}
+	return foundIntersection;
+}
 bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 	for (Vec3Df light : MyLightPositions) {
-		Vec3Df direction = intersection - light;
-		Vec3Df origin = intersection;
-		Vec3Df dest = intersection;
+		Vec3Df tolight = light - intersection;
+		Vec3Df origin = intersection + 0.001f*tolight;
+		Vec3Df dest = light;
 		Triangle foundTriangle;
 		float minDist = INFINITY;
 		/*********************************************************/
 		// Copied code from performRayTracing
 		/*********************************************************/
 		Vec3Df direction = dest - origin;
-		for (int b = 0; b < boxes.size(); b++)
-		{
-			AABB box = boxes[b];
-			Vec3Df pin, pout;
-			if (rayIntersectionPointBox(origin, direction, box, pin, pout))
-			{
-				for (int i = 0; i < MyMesh.triangles.size(); i++)
-				{
-					Vec3Df pointOfIntersection;
-					float distanceRay;
-					Triangle triangle = MyMesh.triangles[i];
-					if (rayIntersectionPointTriangle(origin, direction, triangle, Triangle(),  pointOfIntersection, distanceRay))
-					{
-						if (minDist > distanceRay) {
-							minDist = distanceRay;
-
-						}
-					}
-				}
-			}
+		float distance;
+		Ray r;
+		r.origin = origin;
+		r.direction = direction;
+		r.insideMaterial = false;
+		bool hitSomething = Intersect(0, r, intersection, intersectionTriangle, Triangle(), distance);
+		if (hitSomething) {
+			return hitSomething;
 		}
 	}
+	return false;
 }
 // returns whether the ray hit something or not
 bool Intersect(unsigned int level, const Ray ray, Vec3Df& pointOfIntersection, Triangle& triangleOfIntersection, Triangle ignoreTriangle, float& distance) {
@@ -538,7 +556,7 @@ BoxTree initBoxTree()
 
 void initAccelerationStructure()
 {
-	tree.splitAvg(4000);
+	tree.splitAvg(18000);
 	//showBoxes(&tree);
 	showBoxes(&tree);
 	printTree(&tree, 0);
@@ -636,6 +654,23 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 			}
 		}
 		break;
+	case 'p':
+		{
+			Triangle t;
+			Vec3Df intersection = DebugRay(testRayOrigin, testRayDestination, t);
+			testRayDestination = intersection;
+			std::cout << "Intersection Point: " << testRayDestination <<std::endl;
+
+			if (isInShadow(intersection, t)) {
+				std::cout << "SHADOW" << std::endl;
+
+			}
+			else {
+				std::cout << "LIT" << std::endl;
+			}
+
+		}
+	break;
 	case 'd': // constructs axis aligned bounding boxes
 	{
 		boxes.clear();
