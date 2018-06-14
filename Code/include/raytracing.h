@@ -40,7 +40,7 @@ bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangl
 bool rayIntersectionPointBox(Vec3Df rayOrigin, Vec3Df rayDirection, AABB box, Vec3Df& pin, Vec3Df& pout);
 
 Vec3Df calculateSurfaceNormal(Triangle triangle);
-
+Vec3Df calculateCentroid(const Triangle t);
 
 /**********************************************************************************************
 **Axis-Aligned BoundingBox class
@@ -72,4 +72,21 @@ public:
 	std::vector<Triangle> triangles;
 };
 
+
+/**********************************************************************************************
+**Axis-Aligned BoundingBox Tree class
+***********************************************************************************************/
+class BoxTree {
+public:
+	BoxTree(const AABB data);
+	BoxTree(const AABB data, BoxTree *left, BoxTree *right);
+
+	// splits the box ("data") recursively into smaller parts, and adds them to the tree, until it the amount of triangles within the box is smaller than "minTriangles"
+	void splitMiddle(int minTriangles);
+	void splitAvg(int minTriangles);
+
+	AABB data;
+	BoxTree *left = NULL;
+	BoxTree *right = NULL;
+};
 #endif
