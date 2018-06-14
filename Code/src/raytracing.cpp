@@ -313,7 +313,6 @@ double intensityOfLight(const float &distance, const float &power, const float &
     }
 }
 
-
 struct BoxTree {
 	AABB data;
 	BoxTree *left;
