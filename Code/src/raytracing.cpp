@@ -502,7 +502,7 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
             createLightPointer();
             break;
     case 'w':
-            MyLightPositions[MyLightPositionsPointer] = getCameraPosition();
+            MyLightPositions[MyLightPositionsPointer] = MyCameraPosition;
             setupMySphereLightPositions();
             break;
     case 'l':
@@ -512,14 +512,26 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
                 MyLightPositionsPointer = 0;
             }
             break;
+    case 'p':
+            MyLightPositionPower[MyLightPositionsPointer] += 50;
+            break;
+    case 'P':
+            MyLightPositionPower[MyLightPositionsPointer] -= 50;
+            if (MyLightPositionPower[MyLightPositionsPointer] < 0) {
+                MyLightPositionPower[MyLightPositionsPointer] = 0;
+            }
+            break;
     case 'r':
             MyLightPositionRadius[MyLightPositionsPointer] += .01f;
             setupMySphereLightPositions();
             break;
     case 'R':
             MyLightPositionRadius[MyLightPositionsPointer] -= .01f;
-            if (MyLightPositionRadius[MyLightPositionsPointer] < 0) MyLightPositionRadius[MyLightPositionsPointer] = 0;
-            else setupMySphereLightPositions();
+            if (MyLightPositionRadius[MyLightPositionsPointer] < 0) {
+                MyLightPositionRadius[MyLightPositionsPointer] = 0;
+            } else {
+                setupMySphereLightPositions();
+            }
             break;
     case 'a':
             MyLightPositionAmount[MyLightPositionsPointer] += 1;
@@ -527,8 +539,11 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
             break;
     case 'A':
             MyLightPositionAmount[MyLightPositionsPointer] -= 1;
-            if (MyLightPositionAmount[MyLightPositionsPointer] < 1) MyLightPositionAmount[MyLightPositionsPointer] = 1;
-            else setupMySphereLightPositions();
+            if (MyLightPositionAmount[MyLightPositionsPointer] < 1) {
+                MyLightPositionAmount[MyLightPositionsPointer] = 1;
+            } else {
+                setupMySphereLightPositions();
+            }
             break;
 	default:
 		break;
