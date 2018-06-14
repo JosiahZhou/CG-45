@@ -110,6 +110,7 @@ bool isInShade(Vec3Df & intersection, Triangle & intersectionTriangle) {
 		Vec3Df direction = intersection - light;
 		Vec3Df origin = light;
 		Vec3Df dest = intersection;
+		Triangle foundTriangle;
 		float minDist = INFINITY;
 		/*********************************************************/
 		// Copied code from performRayTracing
@@ -126,7 +127,7 @@ bool isInShade(Vec3Df & intersection, Triangle & intersectionTriangle) {
 					Vec3Df pointOfIntersection;
 					float distanceRay;
 					Triangle triangle = MyMesh.triangles[i];
-					if (rayIntersectionPointTriangle(origin, direction, triangle, pointOfIntersection, distanceRay))
+					if (rayIntersectionPointTriangle(origin, direction, triangle, Triangle(),  pointOfIntersection, distanceRay))
 					{
 						if (minDist > distanceRay) {
 							minDist = distanceRay;
