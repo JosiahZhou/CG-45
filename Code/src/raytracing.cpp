@@ -56,7 +56,7 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("box.obj", true);
+	MyMesh.loadMesh("boxCone.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -104,13 +104,14 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 					}
 				}
 			}
+			if (isInShadow(foundIntersection, t)) {
+				return Vec3Df(0, 0, 1); // shadow == blue
+			}
+			else {
+				return Vec3Df(1, 0, 0); // light == red
+			}
 		}
-		if (isInShadow(foundIntersection, t)) {
-			return Vec3Df(0, 0, 1); // shadow == blue
-		}
-		else {
-			return Vec3Df(1, 0, 0); // light == red
-		}
+		
 	}
 	//caclulate shadows --> only for the minimum distance ( closestIntersectionPoint)
 	// color and other stuff here as well...
@@ -134,7 +135,7 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 				Triangle triangle = box.triangles[i];
 				if (rayIntersectionPointTriangle(origin, direction, triangle, Triangle(), pointOfIntersection, distanceRay))
 				{
-					if (minDist > distanceRay) {
+					if (minDist > distanceRay && distanceRay > 0) {
 						t = triangle;
 						foundIntersection = pointOfIntersection;
 						minDist = distanceRay;
@@ -174,13 +175,12 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 					Triangle triangle = box.triangles[i];
 					// if an intersection gets found, put the resulting point and triangle in the result vars
 					if (rayIntersectionPointTriangle(ray.origin, ray.direction, triangle, intersectionTriangle, intersect, distanceRay)) {
-						if (minDist > distanceRay) {
+						if (distanceRay > 0) {
 							minDist = distanceRay;
 							return true;
 						}
 						// if (distanceRay < 0) pointOfIntersection = pointOfIntersection + 5*ray.direction;
 
-						return true;
 					}
 				}
 			}
@@ -502,7 +502,7 @@ void yourDebugDraw()
 	 glBegin(GL_LINES);
 	 glColor3f(0, 1, 1);
 	 glVertex3f(testRayOrigin[0], testRayOrigin[1], testRayOrigin[2]);
-	 glColor3f(0, 0, 1);
+	 glColor3f(1, 0, 0);
 	 glVertex3f(testRayDestination[0], testRayDestination[1], testRayDestination[2]);
 	 glEnd();
 	 glPointSize(10);
@@ -595,7 +595,7 @@ BoxTree initBoxTree()
 
 void initAccelerationStructure()
 {
-	tree.splitAvg(1800000);
+	tree.splitAvg(1200);
 	//showBoxes(&tree);
 	showBoxes(&tree);
 	printTree(&tree, 0);
