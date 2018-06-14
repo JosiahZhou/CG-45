@@ -9,8 +9,8 @@
 
 //Material class of the mesh
 //while colors seem useful, also texture names are loaded
-//texture coordinates are also supported, 
-//YOU DO NOT have to use textures, if you do not want to! 
+//texture coordinates are also supported,
+//YOU DO NOT have to use textures, if you do not want to!
 //The materials are loaded from the mesh's .mtl file.
 //You can modify the materials yourself in a text editor
 //try it for the dodge (car model) that is provided
@@ -20,28 +20,28 @@ class Material
 
         Material() { cleanup(); };
 
-        Material(const Material & m) 
-        { 
+        Material(const Material & m)
+        {
             *this=m;
         };
- 
+
         Material & operator=(const Material & m)
-        { 
-            Kd_=m.Kd_;         
+        {
+            Kd_=m.Kd_;
             Kd_is_set_=m.Kd_is_set_; // diffuse
-            Ka_=m.Ka_;         
+            Ka_=m.Ka_;
             Ka_is_set_=m.Ka_is_set_; // ambient
-            Ks_=m.Ks_;         
+            Ks_=m.Ks_;
             Ks_is_set_=m.Ks_is_set_; // specular
-            
-            Ns_=m.Ns_;         
+
+            Ns_=m.Ns_;
             Ns_is_set_=m.Ns_is_set_; // specular
-            Ni_=m.Ni_;         
+            Ni_=m.Ni_;
             Ni_is_set_=m.Ni_is_set_; // specular
 
             Tr_=m.Tr_;
             Tr_is_set_=m.Tr_is_set_; // transparency (use this value to trade off reflection/refraction
-            illum_ = m.illum_;		
+            illum_ = m.illum_;
             name_=m.name_;
 			textureName_ = m.textureName_;
             return (*this);
@@ -60,7 +60,7 @@ class Material
 			textureName_.clear();
         }
 
-        bool is_valid(void) const 
+        bool is_valid(void) const
         { return Kd_is_set_ || Ka_is_set_ || Ks_is_set_ || Tr_is_set_; }
 
         bool has_Kd(void) { return Kd_is_set_; }
@@ -71,22 +71,22 @@ class Material
         bool has_illum(void) { return illum_is_set_; }
         bool has_Tr(void) { return Tr_is_set_; }
 
-        void set_Kd( float r, float g, float b ) 
+        void set_Kd( float r, float g, float b )
         { Kd_=Vec3Df(r,g,b); Kd_is_set_=true; }
 
-        void set_Ka( float r, float g, float b ) 
+        void set_Ka( float r, float g, float b )
         { Ka_=Vec3Df(r,g,b); Ka_is_set_=true; }
 
-        void set_Ks( float r, float g, float b ) 
+        void set_Ks( float r, float g, float b )
         { Ks_=Vec3Df(r,g,b); Ks_is_set_=true; }
 
-        void set_Ns( float r) 
+        void set_Ns( float r)
         { Ns_=r;    Ns_is_set_=true; }
 
-        void set_Ni( float r) 
+        void set_Ni( float r)
         { Ni_=r;    Ni_is_set_=true; }
 
-        void set_illum( int r) 
+        void set_illum( int r)
         { illum_=r;    illum_is_set_=true; }
 
         void set_Tr( float t )
@@ -98,14 +98,14 @@ class Material
         }
 
 		void set_name(const std::string & s )
-        { 
+        {
 			name_=s;
 		}
 
         const Vec3Df& Kd( void ) const { return Kd_; } //diffuse
         const Vec3Df& Ka( void ) const { return Ka_; } //ambient
         const Vec3Df& Ks( void ) const { return Ks_; } //specular
-        float  Ni( void ) const { return Ni_; } 
+        float  Ni( void ) const { return Ni_; }
         float  Ns( void ) const { return Ns_; } //shininess
         int       illum(void)const { return illum_;}
         float  Tr( void ) const { return Tr_; }//can be hijacked, e.g., for transparency
@@ -118,14 +118,14 @@ class Material
         {
             return name_;
         }
-        
+
     private:
 
         Vec3Df Kd_;         bool Kd_is_set_; // diffuse
         Vec3Df Ka_;         bool Ka_is_set_; // ambient
         Vec3Df Ks_;         bool Ks_is_set_; // specular
-        float Ns_;                     bool Ns_is_set_; 
-        float Ni_;                     bool Ni_is_set_; 
+        float Ns_;                     bool Ns_is_set_;
+        float Ni_;                     bool Ni_is_set_;
         int illum_;                     bool illum_is_set_;//illumination model
         float Tr_;         bool Tr_is_set_; // transparency
         std::string        name_;
@@ -136,7 +136,7 @@ class Material
 /************************************************************
  * Triangle Class
  ************************************************************/
-//A triangle contains 3 indices to refer to vertex positions 
+//A triangle contains 3 indices to refer to vertex positions
 //and 3 indices to refer to texture coordinates (optional)
  class Triangle {
 public:
@@ -171,10 +171,14 @@ public:
 		t[0] = t2.t[0];
         t[1] = t2.t[1];
         t[2] = t2.t[2];
-        
+
 		return (*this);
     }
-	//vertex position 
+    inline bool operator== (const Triangle & t2) {
+        if (v[0] == t2.v[0] && v[1] == t2.v[1] && v[2] == t2.v[2]) return true;
+        else return false;
+    }
+	//vertex position
     unsigned int v[3];
 	//texture coordinate
     unsigned int t[3];
@@ -200,16 +204,16 @@ public:
 	//for convenience, Vec3Df is used, although only 2D tex coordinates are stored (x,y entry of the Vec3Df).
 	std::vector<Vec3Df> texcoords;
 	//Triangles are the indices of the vertices involved in a triangle.
-	//A triangle, thus, contains a triplet of values corresponding to the 3 vertices of a triangle. 
+	//A triangle, thus, contains a triplet of values corresponding to the 3 vertices of a triangle.
     std::vector<Triangle> triangles;
 	//These are the material properties
-	//each triangle (!), NOT (!) each vertex, has a material. 
+	//each triangle (!), NOT (!) each vertex, has a material.
 	//Use the triangle index to receive a material INDEX
 	std::vector<unsigned int> triangleMaterials;
 	//using the material index, you can then recover the material from this vector
 	//the class material is defined just above
 	std::vector<Material> materials;
-	
+
 	//As an example:
 	//triangle triangles[i] has material index triangleMaterials[i]
 	//and uses Material materials[triangleMaterials[i]].
