@@ -498,6 +498,13 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		}
 	}
 	break;
+    case 'q':
+            createLightPointer();
+            break;
+    case 'w':
+            MyLightPositions[MyLightPositionsPointer] = getCameraPosition();
+            setupMySphereLightPositions();
+            break;
     case 'l':
             if (MyLightPositionsPointer < MyLightPositions.size() - 1) {
                 MyLightPositionsPointer++;
@@ -526,7 +533,6 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 	default:
 		break;
 	}
-
 
 	std::cout << t << " pressed! The mouse was in location " << x << "," << y << "!" << std::endl;
 }
