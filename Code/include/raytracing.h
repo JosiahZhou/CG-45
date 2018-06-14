@@ -45,14 +45,14 @@ void setupMySphereLightPositions();
 void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3Df & rayDestination);
 
 //intersection ray with [Blank]
-bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangle triangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection);
+bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangle triangle, Triangle ignoreTriangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection);
 bool rayIntersectionPointBox(Vec3Df rayOrigin, Vec3Df rayDirection, AABB box, Vec3Df& pin, Vec3Df& pout);
 
 // calculate the intensity of light
 double intensityOfLight(const float &distance, const float &power, const float &minimum);
 
 Vec3Df calculateSurfaceNormal(Triangle triangle);
-
+Vec3Df calculateCentroid(const Triangle t);
 
 /**********************************************************************************************
 **Axis-Aligned BoundingBox class
@@ -84,4 +84,20 @@ public:
 	std::vector<Triangle> triangles;
 };
 
+/**********************************************************************************************
+**Axis-Aligned BoundingBox Tree class
+***********************************************************************************************/
+class BoxTree {
+public:
+	BoxTree(const AABB data);
+	BoxTree(const AABB data, BoxTree *left, BoxTree *right);
+
+	// splits the box ("data") recursively into smaller parts, and adds them to the tree, until it the amount of triangles within the box is smaller than "minTriangles"
+	void splitMiddle(int minTriangles);
+	void splitAvg(int minTriangles);
+
+	AABB data;
+	BoxTree *left = NULL;
+	BoxTree *right = NULL;
+};
 #endif

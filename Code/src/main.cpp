@@ -242,8 +242,9 @@ void keyboard(unsigned char key, int x, int y)
 		produceRay(WindowSize_X-1,0, &origin10, &dest10);
 		produceRay(WindowSize_X-1,WindowSize_Y-1, &origin11, &dest11);
 
+		float doneLines = 0.0f;
 		
-		for (unsigned int y=0; y<WindowSize_Y;++y)
+		for (unsigned int y=0; y<WindowSize_Y;++y) {
 			for (unsigned int x=0; x<WindowSize_X;++x)
 			{
 				//produce the rays for each pixel, by interpolating 
@@ -261,7 +262,10 @@ void keyboard(unsigned char key, int x, int y)
 				//store the result in an image 
 				result.setPixel(x,y, RGBValue(rgb[0], rgb[1], rgb[2]));
 			}
-
+			doneLines++;
+			float progress = doneLines / WindowSize_Y * 100;
+			cout << progress << '\r';
+		}
 		result.writeImage("result.bmp");
 		break;
 	}
