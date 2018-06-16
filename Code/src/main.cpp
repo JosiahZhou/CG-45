@@ -243,9 +243,10 @@ void keyboard(unsigned char key, int x, int y)
 		produceRay(WindowSize_X-1,WindowSize_Y-1, &origin11, &dest11);
 
 		float doneLines = 0.0f;
-		
-		for (unsigned int y=0; y<WindowSize_Y;++y) {
-			for (unsigned int x=0; x<WindowSize_X;++x)
+		//openMP runs this for loop in parallel.
+		#pragma omp parallel for ordered schedule(dynamic)
+		for (int y=0; y<WindowSize_Y;++y) {
+			for (int x=0; x<WindowSize_X;++x)
 			{
 				//produce the rays for each pixel, by interpolating 
 				//the four rays of the frustum corners.
