@@ -13,6 +13,9 @@
 #include "raytracing.h"
 #include <random>
 #include <chrono>
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 
 int light_speed_sphere = 12391;
 
