@@ -14,6 +14,9 @@
 #include <random>
 #include <chrono>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 int light_speed_sphere = 12391;
 
 //temporary variables
@@ -35,13 +38,6 @@ BoxTree tree = BoxTree(AABB());
 
 unsigned int maxRecursionLevel;
 
-// Ray structure
-struct Ray {
-	Vec3Df origin;
-	Vec3Df direction;
-	bool insideMaterial;
-};
-
 // Some forward declarations needed because of recursive functions
 void ComputeDirectLight(Vec3Df pointOfIntersection, Vec3Df& directColor);
 bool ComputeReflectedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle triangleOfIntersection, Ray& reflectedRay);
@@ -59,7 +55,8 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("box.obj", true);
+	MyMesh.loadMesh("dodgeColorTest.obj", true);
+	//MyMesh.loadMesh("box.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -68,17 +65,34 @@ void init()
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
 	//here, we set it to the current location of the camera
-    //MyLightPositions.push_back(MyCameraPosition);
-    createLightPointer();
+	//MyLightPositions.push_back(MyCameraPosition);
+	createLightPointer();
 
 	maxRecursionLevel = 2;
 	recurseTestRayCount = 0;
 
-	for (int i=0; i < 20; i++) {
-		recurseTestRayOrigins[i] = Vec3Df(0,0,0);
-		recurseTestRayDestinations[i] = Vec3Df(0,0,0);
+	for (int i = 0; i < 20; i++) {
+		recurseTestRayOrigins[i] = Vec3Df(0, 0, 0);
+		recurseTestRayDestinations[i] = Vec3Df(0, 0, 0);
 	}
 }
+
+BoxTree initBoxTree()
+{
+	std::pair<Vec3Df, Vec3Df> minMax = getMinAndMaxVertex();
+	AABB aabb = AABB(minMax.first, minMax.second);
+	return BoxTree(aabb);
+}
+
+void initAccelerationStructure()
+{
+	//tree.splitMiddle(4000);
+
+	tree.splitAvg(8000);
+	showBoxes(&tree);
+	printTree(&tree, 0);
+}
+
 
 //return the color of your pixel.
 Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
@@ -88,19 +102,37 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 	Vec3Df foundIntersection;
 	Triangle t;
 	bool intersect;
+	Ray r = { origin, direction, false };
+
+	// IMPORTANT:
+	// Instead of looping through boxes, you can either do this:
+	/*Vec3Df pin, pout;
+	if (rayIntersectionPointBox(r, tree.data, pin, pout))
+	{
+		AABB box = getFirstIntersectedBox(r, &tree, pin, pout);
+	}*/
+	// or:
+	/*Vec3Df pin, pout;
+	if (rayIntersectionPointBox(r, tree.data, pin, pout))
+	{
+		std::vector<AABB> boxes;
+		getAllIntersectedBoxes(r, &tree, pin, pout, boxes);
+	}*/
+
+
 	for (int b = 0; b < boxes.size(); b++)
 	{
 		intersect = false;
 		AABB box = boxes[b];
 		Vec3Df pin, pout;
-		if (rayIntersectionPointBox(origin, direction, box, pin, pout))
+		if (rayIntersectionPointBox(r, box, pin, pout))
 		{
 			for (int i = 0; i < box.triangles.size(); i++)
 			{
 				Vec3Df pointOfIntersection;
 				float distanceRay;
 				Triangle triangle = box.triangles[i];
-				if (rayIntersectionPointTriangle(origin, direction, triangle, Triangle(), pointOfIntersection, distanceRay))
+				if (rayIntersectionPointTriangle(r, triangle, Triangle(), pointOfIntersection, distanceRay))
 				{
 					if (minDist > distanceRay && distanceRay > 0) {
 						t = triangle;
@@ -116,33 +148,36 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 				}
 				else {
 					// color and other stuff here as well...
-					return Vec3Df(1, 1, 1); // light == white
+					return Vec3Df(foundIntersection[0], foundIntersection[1], foundIntersection[2]); // light == white
 				}
 			}
 		}
-		
+
 	}
 	//caclulate shadows --> only for the minimum distance ( closestIntersectionPoint)
 	// color and other stuff here as well...
-	return Vec3Df(0, 0, 0); 
+	return Vec3Df(0, 0, 0);
 	//return Vec3Df(dest[0], dest[1], dest[2]);
 }
+
 Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 	Vec3Df direction = dest - origin;
 	float minDist = INFINITY;
 	Vec3Df foundIntersection;
+	Ray r = { origin, direction, false };
+
 	for (int b = 0; b < boxes.size(); b++)
 	{
 		AABB box = boxes[b];
 		Vec3Df pin, pout;
-		if (rayIntersectionPointBox(origin, direction, box, pin, pout))
+		if (rayIntersectionPointBox(r, box, pin, pout))
 		{
 			for (int i = 0; i < box.triangles.size(); i++)
 			{
 				Vec3Df pointOfIntersection;
 				float distanceRay;
 				Triangle triangle = box.triangles[i];
-				if (rayIntersectionPointTriangle(origin, direction, triangle, Triangle(), pointOfIntersection, distanceRay))
+				if (rayIntersectionPointTriangle(r, triangle, Triangle(), pointOfIntersection, distanceRay))
 				{
 					if (minDist > distanceRay && distanceRay > 0) {
 						t = triangle;
@@ -177,13 +212,13 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 			AABB box = boxes[b];
 			Vec3Df pin, pout;
 			// then trace the ray down to the right triangle
-			if (rayIntersectionPointBox(ray.origin, ray.direction, box, pin, pout)) {
+			if (rayIntersectionPointBox(ray, box, pin, pout)) {
 				for (int i = 0; i < box.triangles.size(); i++) {
 					Vec3Df intersect;
 					float distanceRay;
 					Triangle triangle = box.triangles[i];
 					// if an intersection gets found, put the resulting point and triangle in the result vars
-					if (rayIntersectionPointTriangle(ray.origin, ray.direction, triangle, Triangle(), intersect, distanceRay)) {
+					if (rayIntersectionPointTriangle(ray, triangle, Triangle(), intersect, distanceRay)) {
 						if (distanceRay > 0) {
 							minDist = distanceRay;
 							return true;
@@ -209,13 +244,13 @@ bool Intersect(unsigned int level, const Ray ray, Vec3Df& pointOfIntersection, T
 		AABB box = boxes[b];
 		Vec3Df pin, pout;
 		// then trace the ray down to the right triangle
-		if (rayIntersectionPointBox(ray.origin, ray.direction, box, pin, pout)) {
+		if (rayIntersectionPointBox(ray, box, pin, pout)) {
 			for (int i = 0; i < box.triangles.size(); i++) {
 				Vec3Df intersect;
 				float distanceRay;
 				Triangle triangle = box.triangles[i];
 				// if an intersection gets found, put the resulting point and triangle in the result vars
-				if (rayIntersectionPointTriangle(ray.origin, ray.direction, triangle, ignoreTriangle, intersect, distanceRay)) {
+				if (rayIntersectionPointTriangle(ray, triangle, ignoreTriangle, intersect, distanceRay)) {
 					pointOfIntersection = intersect;
 					triangleOfIntersection = triangle;
 					distance = distanceRay;
@@ -246,7 +281,7 @@ void Shade(unsigned int level, Ray origRay, Vec3Df pointOfIntersection, Triangle
 
 	if (ComputeRefractedRay(origRay, pointOfIntersection, triangleOfIntersection, refractedRay)) Trace(level + 1, refractedRay, refractedColor, triangleOfIntersection);
 
-	color = directColor + reflection*reflectedColor + transmission*refractedColor;
+	color = directColor + reflection * reflectedColor + transmission * refractedColor;
 
 	return;
 }
@@ -260,7 +295,7 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 		if (distance < 0) {
 			Vec3Df newRayDir = ray.origin - pointOfIntersection;
 			newRayDir.normalize();
-			pointOfIntersection = ray.origin + 5*newRayDir;
+			pointOfIntersection = ray.origin + 5 * newRayDir;
 		}
 
 		recurseTestRayOrigins[recurseTestRayCount] = ray.origin;
@@ -270,8 +305,9 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 		std::cout << "Traced a ray on level " << level << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << distance << std::endl;
 
 		if (distance >= 0) Shade(level, ray, pointOfIntersection, triangleOfIntersection, color);
-	} else {
-		color = Vec3Df(0,0,0);
+	}
+	else {
+		color = Vec3Df(0, 0, 0);
 	}
 
 	return;
@@ -279,12 +315,12 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 
 void ComputeDirectLight(Vec3Df pointOfIntersection, Vec3Df& directColor) {
 	if (isInShadow(pointOfIntersection, Triangle())) {
-		directColor = Vec3Df(0,0,0); // Hard shadow, item is in the shadow thus color is black
+		directColor = Vec3Df(0, 0, 0); // Hard shadow, item is in the shadow thus color is black
 	}
 
-		/*
-		Better if this method is removed or the return should be a boolean, it is not necessary  to calculate colors, reflections if there's a shadow cast on the triangle/intersection.
-		*/
+	/*
+	Better if this method is removed or the return should be a boolean, it is not necessary  to calculate colors, reflections if there's a shadow cast on the triangle/intersection.
+	*/
 
 	return;
 }
@@ -295,7 +331,7 @@ bool ComputeReflectedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle trian
 
 	reflectedRay.origin = pointOfIntersection;
 	// calculate reflected direction vector
-	reflectedRay.direction = origRay.direction - 2*n*(Vec3Df::dotProduct(origRay.direction, n));
+	reflectedRay.direction = origRay.direction - 2 * n*(Vec3Df::dotProduct(origRay.direction, n));
 	reflectedRay.insideMaterial = origRay.insideMaterial;
 
 	return true;
@@ -311,7 +347,8 @@ bool ComputeRefractedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle trian
 	if (origRay.insideMaterial) {
 		n1 = 1.517f;
 		n2 = 1.0f;
-	} else {
+	}
+	else {
 		n1 = 1.0f;
 		n2 = 1.517f;
 	}
@@ -322,8 +359,9 @@ bool ComputeRefractedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle trian
 	Vec3Df v = origRay.direction;
 	float v_dot_n = Vec3Df::dotProduct(v, n);
 	try {
-		refractedRay.direction = n1/n2*(v - v_dot_n*n) - n*sqrt(1 - (n1*n1*(1 - v_dot_n*v_dot_n))/(n2*n2));
-	} catch (int e) {
+		refractedRay.direction = n1 / n2 * (v - v_dot_n * n) - n * sqrt(1 - (n1*n1*(1 - v_dot_n * v_dot_n)) / (n2*n2));
+	}
+	catch (int e) {
 		std::cout << "Negative square root, no refracted ray..." << std::endl;
 		return false;
 	}
@@ -337,7 +375,7 @@ bool ComputeRefractedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle trian
  * Moller and Trumbore algorithnm: point(u,v) = (1-u-v)*p0 + u*p1 + v*p2
  * returns true if the ray intersects with the triangle.
 */
-bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangle triangle, Triangle ignoreTriangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection)
+bool rayIntersectionPointTriangle(Ray r, Triangle triangle, Triangle ignoreTriangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection)
 {
 	if (ignoreTriangle == triangle) return false;
 	float epsilon = 0.001f;
@@ -356,16 +394,16 @@ bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangl
 	Vec3Df n = Vec3Df::crossProduct(edges[0], edges[1]);
 	n.normalize();
 
-	Vec3Df T = rayOrigin - MyMesh.vertices[triangle.v[0]].p;
+	Vec3Df T = r.origin - MyMesh.vertices[triangle.v[0]].p;
 
-	Vec3Df P = Vec3Df::crossProduct(rayDirection, edges[1]);
+	Vec3Df P = Vec3Df::crossProduct(r.direction, edges[1]);
 	Vec3Df Q = Vec3Df::crossProduct(T, edges[0]);
 
 	float invDet = 1.0 / Vec3Df::dotProduct(P, edges[0]); // 1 / P . E1
 
 	t = invDet * Vec3Df::dotProduct(Q, edges[1]);
 	u = invDet * Vec3Df::dotProduct(P, T);
-	v = invDet * Vec3Df::dotProduct(Q, rayDirection);
+	v = invDet * Vec3Df::dotProduct(Q, r.direction);
 
 	// check whether there is an intersection
 	if (u < 0.0 || v < 0.0 || u + v > 1.0) return false; // u >= 0, v >= 0, u + v <= 1
@@ -383,20 +421,20 @@ bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangl
 * returns true if the ray intersects with the box
 * Reference: https://www.youtube.com/watch?v=USjbg5QXk3g (Math for Game Developers - Bullet Collision (Vector/AABB Intersection))
 */
-bool rayIntersectionPointBox(Vec3Df rayOrigin, Vec3Df rayDirection, AABB box, Vec3Df& pin, Vec3Df& pout)
+bool rayIntersectionPointBox(Ray r, AABB box, Vec3Df& pin, Vec3Df& pout)
 {
 	Vec3Df min = box.minmax_.first;
 	Vec3Df max = box.minmax_.second;
 
 	float tminX, tminY, tminZ, tmaxX, tmaxY, tmaxZ, tinX, tinY, tinZ, toutX, toutY, toutZ, tin, tout;
 
-	tminX = (min.p[0] - rayOrigin.p[0]) / rayDirection.p[0]; // (x - Ox) / Dx
-	tminY = (min.p[1] - rayOrigin.p[1]) / rayDirection.p[1]; // (y - Oy) / Dy
-	tminZ = (min.p[2] - rayOrigin.p[2]) / rayDirection.p[2]; // (z - Oz) / Dz
+	tminX = (min.p[0] - r.origin.p[0]) / r.direction.p[0]; // (x - Ox) / Dx
+	tminY = (min.p[1] - r.origin.p[1]) / r.direction.p[1]; // (y - Oy) / Dy
+	tminZ = (min.p[2] - r.origin.p[2]) / r.direction.p[2]; // (z - Oz) / Dz
 
-	tmaxX = (max.p[0] - rayOrigin.p[0]) / rayDirection.p[0]; // (x - Ox) / Dx
-	tmaxY = (max.p[1] - rayOrigin.p[1]) / rayDirection.p[1]; // (y - Oy) / Dy
-	tmaxZ = (max.p[2] - rayOrigin.p[2]) / rayDirection.p[2]; // (z - Oz) / Dz
+	tmaxX = (max.p[0] - r.origin.p[0]) / r.direction.p[0]; // (x - Ox) / Dx
+	tmaxY = (max.p[1] - r.origin.p[1]) / r.direction.p[1]; // (y - Oy) / Dy
+	tmaxZ = (max.p[2] - r.origin.p[2]) / r.direction.p[2]; // (z - Oz) / Dz
 
 	tinX = std::min(tminX, tmaxX);
 	toutX = std::max(tminX, tmaxX);
@@ -413,11 +451,12 @@ bool rayIntersectionPointBox(Vec3Df rayOrigin, Vec3Df rayDirection, AABB box, Ve
 		return false;
 	}
 
-	pin = rayOrigin + rayDirection * tin;
-	pout = rayOrigin + rayDirection * tout;
+	pin = r.origin + r.direction * tin;
+	pout = r.origin + r.direction * tout;
 	return true;
 }
 
+// gets the minimum and maximum vertex of all triangles, used to create a bounding box
 std::pair<Vec3Df, Vec3Df> getMinAndMaxVertex()
 {
 	Vec3Df min = Vec3Df(INT32_MAX, INT32_MAX, INT32_MAX);
@@ -478,6 +517,7 @@ void drawRay(Vec3Df rayOrig, Vec3Df rayDest, Vec3Df color) {
 	glPopAttrib();
 }
 
+// calculates the centroid of the triangle
 Vec3Df calculateCentroid(const Triangle t)
 {
 	Vec3Df trianglev0 = MyMesh.vertices[t.v[0]].p;
@@ -512,19 +552,19 @@ void yourDebugDraw()
 
 
 	//as an example: we draw the test ray, which is set by the keyboard function
-	 glPushAttrib(GL_ALL_ATTRIB_BITS);
-	 glDisable(GL_LIGHTING);
-	 glBegin(GL_LINES);
-	 glColor3f(0, 1, 1);
-	 glVertex3f(testRayOrigin[0], testRayOrigin[1], testRayOrigin[2]);
-	 glColor3f(1, 0, 0);
-	 glVertex3f(testRayDestination[0], testRayDestination[1], testRayDestination[2]);
-	 glEnd();
-	 glPointSize(10);
-	 glBegin(GL_POINTS);
-	 glVertex3fv(MyLightPositions[0].pointer());
-	 glEnd();
-	 glPopAttrib();
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+	glDisable(GL_LIGHTING);
+	glBegin(GL_LINES);
+	glColor3f(0, 1, 1);
+	glVertex3f(testRayOrigin[0], testRayOrigin[1], testRayOrigin[2]);
+	glColor3f(1, 0, 0);
+	glVertex3f(testRayDestination[0], testRayDestination[1], testRayDestination[2]);
+	glEnd();
+	glPointSize(10);
+	glBegin(GL_POINTS);
+	glVertex3fv(MyLightPositions[0].pointer());
+	glEnd();
+	glPopAttrib();
 
 	// draw the bounding boxes
 	for (AABB box : boxes)
@@ -532,8 +572,8 @@ void yourDebugDraw()
 		box.highlightBoxEdges();
 	}
 
-	for (int i=0; i < 20; i++) {
-		drawRay(recurseTestRayOrigins[i], recurseTestRayDestinations[i], Vec3Df(0,1,0));
+	for (int i = 0; i < 20; i++) {
+		drawRay(recurseTestRayOrigins[i], recurseTestRayDestinations[i], Vec3Df(0, 1, 0));
 	}
 
 	//draw whatever else you want...
@@ -549,47 +589,48 @@ void yourDebugDraw()
  * This is necessary for soft shadows. Soft shadows is basically the same principle as hard shadows but then with multiple light sources.
  */
 void setupMySphereLightPositions() {
-    
-    // Clear old light positions of the sphere.
-    MySphereLightPositions.clear();
-    
-    // Loop through all the light centers.
-    for (int i = 0; i < MyLightPositions.size(); i++) {
-        
-        // We use a seed so that every scene will be the same for all lights,
-        // even though we are using random points.
-        std::mt19937 seed(light_speed_sphere);
-        std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
-        
-        // Retrieve the values of the current light.
-        Vec3Df lightPosition = MyLightPositions[i];
-        float lightSphereWidth = MyLightPositionRadius[i];
-        int lightSphereAmount = MyLightPositionAmount[i];
-        
-        // Create the list of points.
-        std::vector<Vec3Df> currentLightSphere;
-        
-        // We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
-        if (MyLightPositionAmount[i] > 1 && MyLightPositionRadius[i] > 0) {
-            
-            // Calculate position for every surface light.
-            for (int i = 0; i < lightSphereAmount; i++) {
-                double theta = 2 * M_PI * rndFloat(seed);
-                double phi = acos(1 - 2 * rndFloat(seed));
-                double x = lightPosition[0] + sin(phi) * cos(theta) * lightSphereWidth;
-                double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
-                double z = lightPosition[2] + cos(phi) * lightSphereWidth;
-                Vec3Df offset = Vec3Df(x, y, z);        
-                currentLightSphere.push_back(offset);
-            }
-        } else {
-            // We just add the normal light position.
-            currentLightSphere.push_back(lightPosition);
-        }
-        
-        // We add list of points around the sphere into the list.
-        MySphereLightPositions.push_back(currentLightSphere);
-    }
+
+	// Clear old light positions of the sphere.
+	MySphereLightPositions.clear();
+
+	// Loop through all the light centers.
+	for (int i = 0; i < MyLightPositions.size(); i++) {
+
+		// We use a seed so that every scene will be the same for all lights,
+		// even though we are using random points.
+		std::mt19937 seed(light_speed_sphere);
+		std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
+
+		// Retrieve the values of the current light.
+		Vec3Df lightPosition = MyLightPositions[i];
+		float lightSphereWidth = MyLightPositionRadius[i];
+		int lightSphereAmount = MyLightPositionAmount[i];
+
+		// Create the list of points.
+		std::vector<Vec3Df> currentLightSphere;
+
+		// We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
+		if (MyLightPositionAmount[i] > 1 && MyLightPositionRadius[i] > 0) {
+
+			// Calculate position for every surface light.
+			for (int i = 0; i < lightSphereAmount; i++) {
+				double theta = 2 * M_PI * rndFloat(seed);
+				double phi = acos(1 - 2 * rndFloat(seed));
+				double x = lightPosition[0] + sin(phi) * cos(theta) * lightSphereWidth;
+				double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
+				double z = lightPosition[2] + cos(phi) * lightSphereWidth;
+				Vec3Df offset = Vec3Df(x, y, z);
+				currentLightSphere.push_back(offset);
+			}
+		}
+		else {
+			// We just add the normal light position.
+			currentLightSphere.push_back(lightPosition);
+		}
+
+		// We add list of points around the sphere into the list.
+		MySphereLightPositions.push_back(currentLightSphere);
+	}
 }
 
 /**
@@ -601,12 +642,13 @@ void setupMySphereLightPositions() {
  * @return the intensity of the light between the object and the light.
  */
 double intensityOfLight(const float &distance, const float &power, const float &minimum) {
-    double intensity = 1 / (4 * M_PI * distance * distance * (1 / power) + 1);
-    if (intensity > minimum) {
-        return intensity;
-    } else {
-        return minimum;
-    }
+	double intensity = 1 / (4 * M_PI * distance * distance * (1 / power) + 1);
+	if (intensity > minimum) {
+		return intensity;
+	}
+	else {
+		return minimum;
+	}
 }
 
 // https://stackoverflow.com/questions/13484943/print-a-binary-tree-in-a-pretty-way
@@ -646,39 +688,24 @@ void showLeavesOnly(struct BoxTree* curr)
 	showLeavesOnly(curr->right);
 }
 
-void showIntersectionBoxOnly(Vec3Df rayOrigin, Vec3Df rayDirection, struct BoxTree* curr)
+void showIntersectionBoxOnly(Ray r, struct BoxTree* curr)
 {
 	Vec3Df pin, pout;
 
 	if (curr == NULL)return;
-	if (rayIntersectionPointBox(rayOrigin, rayDirection, curr->data, pin, pout)) boxes.push_back(curr->data);
-	showIntersectionBoxOnly(rayOrigin, rayDirection, curr->left);
-	showIntersectionBoxOnly(rayOrigin, rayDirection, curr->right);
+	if (rayIntersectionPointBox(r, curr->data, pin, pout)) boxes.push_back(curr->data);
+	showIntersectionBoxOnly(r, curr->left);
+	showIntersectionBoxOnly(r, curr->right);
 }
 
-void showIntersectionLeafOnly(Vec3Df rayOrigin, Vec3Df rayDirection, struct BoxTree* curr)
+void showIntersectionLeafOnly(Ray r, struct BoxTree* curr)
 {
 	Vec3Df pin, pout;
 
 	if (curr == NULL)return;
-	if (curr->left == NULL && curr->right == NULL && rayIntersectionPointBox(rayOrigin, rayDirection, curr->data, pin, pout)) boxes.push_back(curr->data);
-	showIntersectionLeafOnly(rayOrigin, rayDirection, curr->left);
-	showIntersectionLeafOnly(rayOrigin, rayDirection, curr->right);
-}
-
-BoxTree initBoxTree()
-{
-	std::pair<Vec3Df, Vec3Df> minMax = getMinAndMaxVertex();
-	AABB aabb = AABB(minMax.first, minMax.second);
-	return BoxTree(aabb);
-}
-
-void initAccelerationStructure()
-{
-	tree.splitAvg(1200);
-	//showBoxes(&tree);
-	showBoxes(&tree);
-	printTree(&tree, 0);
+	if (curr->left == NULL && curr->right == NULL && rayIntersectionPointBox(r, curr->data, pin, pout)) boxes.push_back(curr->data);
+	showIntersectionLeafOnly(r, curr->left);
+	showIntersectionLeafOnly(r, curr->right);
 }
 
 /**
@@ -687,7 +714,7 @@ void initAccelerationStructure()
  * 1 - BoxTree *curr is not NULL
  * 2 - The ray, atleast, intersects the overlapping boundingbox, or in other words the initial "curr->data".
 **/
-AABB getFirstIntersectedBox(Vec3Df rayOrigin, Vec3Df rayDirection, BoxTree* curr, Vec3Df& pin, Vec3Df& pout)
+AABB getFirstIntersectedBox(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout)
 {
 	if (curr->left == NULL && curr->right == NULL) // if we hit a leaf
 	{
@@ -695,22 +722,42 @@ AABB getFirstIntersectedBox(Vec3Df rayOrigin, Vec3Df rayDirection, BoxTree* curr
 	}
 	else if (curr->left == NULL)
 	{
-		return getFirstIntersectedBox(rayOrigin, rayDirection, curr->right, pin, pout);
+		if (rayIntersectionPointBox(r, curr->right->data, pin, pout))
+		{
+			return getFirstIntersectedBox(r, curr->right, pin, pout);
+		}
+		return curr->data;
 	}
 	else if (curr->right == NULL)
 	{
-		return getFirstIntersectedBox(rayOrigin, rayDirection, curr->left, pin, pout);
+		if (rayIntersectionPointBox(r, curr->left->data, pin, pout))
+		{
+			return getFirstIntersectedBox(r, curr->left, pin, pout);
+		}
+		return curr->data;
 	}
-	else if (rayIntersectionPointBox(rayOrigin, rayDirection, curr->left->data, pin, pout))
+	else if (rayIntersectionPointBox(r, curr->left->data, pin, pout))
 	{
 		Vec3Df testpin, pout;
-		if (rayIntersectionPointBox(rayOrigin, rayDirection, curr->right->data, testpin, pout) && Vec3Df::distance(testpin, rayOrigin) < Vec3Df::distance(pin, rayOrigin))
+		if (rayIntersectionPointBox(r, curr->right->data, testpin, pout) && Vec3Df::distance(testpin, r.origin) < Vec3Df::distance(pin, r.origin))
 		{
-			return getFirstIntersectedBox(rayOrigin, rayDirection, curr->right, pin, pout);
+			return getFirstIntersectedBox(r, curr->right, pin, pout);
 		}
-		return getFirstIntersectedBox(rayOrigin, rayDirection, curr->left, pin, pout);
+		return getFirstIntersectedBox(r, curr->left, pin, pout);
 	}
-	return getFirstIntersectedBox(rayOrigin, rayDirection, curr->right, pin, pout);
+	else if (rayIntersectionPointBox(r, curr->right->data, pin, pout))
+	{
+		return getFirstIntersectedBox(r, curr->right, pin, pout);
+	}
+	return curr->data;
+}
+
+void getAllIntersectedBoxes(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout, std::vector<AABB> &intersections)
+{
+	if (curr == NULL)return;
+	if (curr->left == NULL && curr->right == NULL && rayIntersectionPointBox(r, curr->data, pin, pout)) intersections.push_back(curr->data);
+	showIntersectionLeafOnly(r, curr->left);
+	showIntersectionLeafOnly(r, curr->right);
 }
 
 //yourKeyboardFunc is used to deal with keyboard input.
@@ -745,70 +792,69 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 	// do here, whatever you want with the keyboard input t.
 	switch (t) {
 	case 'i':  // check intersection with triangle
-		{
-			//here, as an example, I use the ray to fill in the values for my upper global ray variable
-			//I use these variables in the debugDraw function to draw the corresponding ray.
-			//try it: Press a key, move the camera, see the ray that was launched as a line.
+	{
+		//here, as an example, I use the ray to fill in the values for my upper global ray variable
+		//I use these variables in the debugDraw function to draw the corresponding ray.
+		//try it: Press a key, move the camera, see the ray that was launched as a line.
 
-			for (int i = 0; i < MyMesh.triangles.size(); i++)
+		for (int i = 0; i < MyMesh.triangles.size(); i++)
+		{
+			Triangle triangle = MyMesh.triangles[i];
+
+			Vec3Df pointOfIntersection;
+			float distanceRay;
+			Vec3Df color;
+			Vec3Df hit;
+			//				if (rayIntersectionPointPlane(rayOrigin, normRayDirection, triangle, pointOfIntersection))
+			//				{
+			//					std::cout << pointOfIntersection << std::endl;
+			//				}
+			Ray r = { rayOrigin, normRayDirection, false };
+
+			if (rayIntersectionPointTriangle(r, triangle, Triangle(), pointOfIntersection, distanceRay))
 			{
-				Triangle triangle = MyMesh.triangles[i];
-
-				Vec3Df pointOfIntersection;
-				float distanceRay;
-				Vec3Df color;
-				Vec3Df hit;
-				//				if (rayIntersectionPointPlane(rayOrigin, normRayDirection, triangle, pointOfIntersection))
-				//				{
-				//					std::cout << pointOfIntersection << std::endl;
-				//				}
-
-				if (rayIntersectionPointTriangle(rayOrigin, normRayDirection, triangle, Triangle(), pointOfIntersection, distanceRay))
-				{
-					std::cout << "Ray InterSects Triangle: " << pointOfIntersection << std::endl;
-					//					Material mat = MyMesh.materials[MyMesh.triangleMaterials[i]];
-					//					mat.set_Kd(0, 0, 0);
-					//					std::cout << (mat.Kd()) << std::endl;
-				}
+				std::cout << "Ray InterSects Triangle: " << pointOfIntersection << std::endl;
+				//					Material mat = MyMesh.materials[MyMesh.triangleMaterials[i]];
+				//					mat.set_Kd(0, 0, 0);
+				//					std::cout << (mat.Kd()) << std::endl;
 			}
 		}
-		break;
+	}
+	break;
 	case 's':
-		{
-			Triangle t;
-			Vec3Df intersection = DebugRay(testRayOrigin, testRayDestination, t);
-			testRayDestination = intersection;
-			/*std::cout << "Intersection Point: " << testRayDestination <<std::endl;
-			std::cout << "Intersection Point: " << intersection <<std::endl;*/
+	{
+		Triangle t;
+		Vec3Df intersection = DebugRay(testRayOrigin, testRayDestination, t);
+		testRayDestination = intersection;
+		/*std::cout << "Intersection Point: " << testRayDestination <<std::endl;
+		std::cout << "Intersection Point: " << intersection <<std::endl;*/
 
-			if (isInShadow(intersection, t)) {
-				std::cout << "Intersection lies in the : SHADOW" << std::endl;
-
-			}
-			else {
-				std::cout << "Intersection lies in the : LIGHT" << std::endl;
-			}
+		if (isInShadow(intersection, t)) {
+			std::cout << "Intersection lies in the : SHADOW" << std::endl;
 
 		}
+		else {
+			std::cout << "Intersection lies in the : LIGHT" << std::endl;
+		}
+
+	}
 	break;
 	case 'd': // constructs axis aligned bounding boxes
 	{
 		boxes.clear();
 
+		Vec3Df pin, pout;
+		Ray r;
+		r.origin = rayOrigin;
+		r.direction = rayDestination - rayOrigin;
+		r.insideMaterial = false;
+
 		// Splitting the tree
 		//tree.splitMiddle(4000);
-		tree.splitAvg(4000);
-
-		// Drawing the boxes
-		showBoxes(&tree);
-		//showLeavesOnly(&tree);
-		//showIntersectionBoxOnly(rayOrigin, normRayDirection, &tree);
-		//showIntersectionLeafOnly(rayOrigin, normRayDirection, &tree);
+		//tree.splitAvg(4000);
 
 		// Draw smallest Intersected Box
-		//Vec3Df pin, pout;
-		//boxes.push_back(getFirstIntersectedBox(rayOrigin, rayDestination - rayOrigin, &tree, pin, pout));
-
+		boxes.push_back(getFirstIntersectedBox(r, &tree, pin, pout));
 		printTree(&tree, 0);
 
 		/*if (rayIntersectionPointBox(rayOrigin, normRayDirection, boxes[0], pin, pout))
@@ -817,72 +863,92 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		}*/
 	}
 	break;
-    case 'x':
-            createLightPointer();
-            break;
-    case 'w':
-            MyLightPositions[MyLightPositionsPointer] = MyCameraPosition;
-            setupMySphereLightPositions();
-            break;
-    case 'l':
-            if (MyLightPositionsPointer < MyLightPositions.size() - 1) {
-                MyLightPositionsPointer++;
-            } else {
-                MyLightPositionsPointer = 0;
-            }
-            break;
-    case 'p':
-            MyLightPositionPower[MyLightPositionsPointer] += 50;
-            break;
-    case 'P':
-            MyLightPositionPower[MyLightPositionsPointer] -= 50;
-            if (MyLightPositionPower[MyLightPositionsPointer] < 0) {
-                MyLightPositionPower[MyLightPositionsPointer] = 0;
-            }
-            break;
-    case 'r':
-            MyLightPositionRadius[MyLightPositionsPointer] += .01f;
-            setupMySphereLightPositions();
-            break;
-    case 'R':
-            MyLightPositionRadius[MyLightPositionsPointer] -= .01f;
-            if (MyLightPositionRadius[MyLightPositionsPointer] < 0) {
-                MyLightPositionRadius[MyLightPositionsPointer] = 0;
-            } else {
-                setupMySphereLightPositions();
-            }
-            break;
-    case 'a':
-            MyLightPositionAmount[MyLightPositionsPointer] += 1;
-            setupMySphereLightPositions();
-            break;
-    case 'A':
-            MyLightPositionAmount[MyLightPositionsPointer] -= 1;
-            if (MyLightPositionAmount[MyLightPositionsPointer] < 1) {
-                MyLightPositionAmount[MyLightPositionsPointer] = 1;
-            } else {
-                setupMySphereLightPositions();
-            }
-            break;
-	case 'q':
-		{
-			recurseTestRayCount = 0;
+	case 'f':
+	{
+		boxes.clear();
 
-			Ray recurseTestRay;
+		Ray r;
+		r.origin = rayOrigin;
+		r.direction = rayDestination - rayOrigin;
+		r.insideMaterial = false;
 
-			Vec3Df resultColor;
-
-			recurseTestRay.origin = rayOrigin;
-			recurseTestRay.direction = normRayDirection;
-			recurseTestRay.insideMaterial = false;
-
-			std::cout << "Starting recursive raytrace..." << std::endl;
-
-			Trace(0, recurseTestRay, resultColor, Triangle());
-
-			std::cout << "Recursive ray trace done." << std::endl;
+		// Drawing the boxes
+		//showBoxes(&tree);
+		//showLeavesOnly(&tree);
+		//showIntersectionBoxOnly(rayOrigin, normRayDirection, &tree);
+		//showIntersectionLeafOnly(r, &tree);
+		getAllIntersectedBoxes(r, &tree, Vec3Df(), Vec3Df(), boxes);
+	}
+	break;
+	case 'x':
+		createLightPointer();
+		break;
+	case 'w':
+		MyLightPositions[MyLightPositionsPointer] = MyCameraPosition;
+		setupMySphereLightPositions();
+		break;
+	case 'l':
+		if (MyLightPositionsPointer < MyLightPositions.size() - 1) {
+			MyLightPositionsPointer++;
+		}
+		else {
+			MyLightPositionsPointer = 0;
 		}
 		break;
+	case 'p':
+		MyLightPositionPower[MyLightPositionsPointer] += 50;
+		break;
+	case 'P':
+		MyLightPositionPower[MyLightPositionsPointer] -= 50;
+		if (MyLightPositionPower[MyLightPositionsPointer] < 0) {
+			MyLightPositionPower[MyLightPositionsPointer] = 0;
+		}
+		break;
+	case 'r':
+		MyLightPositionRadius[MyLightPositionsPointer] += .01f;
+		setupMySphereLightPositions();
+		break;
+	case 'R':
+		MyLightPositionRadius[MyLightPositionsPointer] -= .01f;
+		if (MyLightPositionRadius[MyLightPositionsPointer] < 0) {
+			MyLightPositionRadius[MyLightPositionsPointer] = 0;
+		}
+		else {
+			setupMySphereLightPositions();
+		}
+		break;
+	case 'a':
+		MyLightPositionAmount[MyLightPositionsPointer] += 1;
+		setupMySphereLightPositions();
+		break;
+	case 'A':
+		MyLightPositionAmount[MyLightPositionsPointer] -= 1;
+		if (MyLightPositionAmount[MyLightPositionsPointer] < 1) {
+			MyLightPositionAmount[MyLightPositionsPointer] = 1;
+		}
+		else {
+			setupMySphereLightPositions();
+		}
+		break;
+	case 'q':
+	{
+		recurseTestRayCount = 0;
+
+		Ray recurseTestRay;
+
+		Vec3Df resultColor;
+
+		recurseTestRay.origin = rayOrigin;
+		recurseTestRay.direction = normRayDirection;
+		recurseTestRay.insideMaterial = false;
+
+		std::cout << "Starting recursive raytrace..." << std::endl;
+
+		Trace(0, recurseTestRay, resultColor, Triangle());
+
+		std::cout << "Recursive ray trace done." << std::endl;
+	}
+	break;
 	default:
 		break;
 	}
@@ -1005,7 +1071,7 @@ AABB::AABB(const Vec3Df min, const Vec3Df max)
 	for (int i = 0; i < MyMesh.triangles.size(); i++)
 	{
 		// WithinBox/WithinBoxFull: You Decide...
-		if (withinBox(MyMesh.triangles[i]))
+		if (withinBoxFull(MyMesh.triangles[i]))
 		{
 			triangles.push_back(MyMesh.triangles[i]);
 		}
@@ -1279,9 +1345,9 @@ void BoxTree::splitAvg(int minTriangles)
 	Vec3Df avg = Vec3Df(0.0f, 0.0f, 0.0f);
 
 	//add all the vertices inside the boundingbox to avg
-	for (int l = 0; l < data.triangles.size(); ++l)
+	for (int l = 0; l < data.triangles.size(); l++)
 	{
-		for (int m = 0; m < 3; ++m)
+		for (int m = 0; m < 3; m++)
 		{
 			avg += MyMesh.vertices[data.triangles[l].v[m]].p;
 		}
@@ -1289,6 +1355,7 @@ void BoxTree::splitAvg(int minTriangles)
 
 	avg /= ((float)data.triangles.size() * 3.0f);
 
+	int edge = 0;
 	if (edgeX > edgeY && edgeX > edgeZ)
 	{
 		newMin[0] = avg[0];
@@ -1298,15 +1365,68 @@ void BoxTree::splitAvg(int minTriangles)
 	{
 		newMin[1] = avg[1];
 		newMax[1] = avg[1];
+		edge = 1;
 	}
 	else
 	{
 		newMin[2] = avg[2];
 		newMax[2] = avg[2];
+		edge = 2;
 	}
 
 	AABB leftNode = AABB(oldMin, newMax);
 	AABB rightNode = AABB(newMin, oldMax);
+
+	//Vector of vertices of triangles that are located on the splitting plane.
+	std::vector<Vec3Df> onSplitPlane;
+
+	for (int i = 0; i < data.triangles.size(); i++)
+	{
+		if (leftNode.withinBox(data.triangles[i]) && rightNode.withinBox(data.triangles[i]))
+		{
+			for (int j = 0; j < 3; j++)
+			{
+				onSplitPlane.push_back(MyMesh.vertices[data.triangles[i].v[j]].p);
+			}
+		}
+	}
+
+
+
+	//if the average coord of the splitting axis is larger than (or equal to) the middle of the splitting axis,
+	//move newMin in an attempt to fully contain the triangles on the splitting plane
+	if (avg[edge] >= (oldMin[edge] + ((oldMax[edge] - oldMin[edge]) / 2.0f)))
+	{
+		for (int n = 0; n < onSplitPlane.size(); n++)
+		{
+			if (onSplitPlane[n][edge] < newMin[edge])
+			{
+				newMin[edge] = onSplitPlane[n][edge];
+			}
+		}
+		if (oldMin != newMin)
+			rightNode = AABB(newMin, oldMax);
+	}
+	else //otherwise, move newMax in an attempt to fully contain the triangles on the splitting plane
+	{
+		for (int n = 0; n < onSplitPlane.size(); n++)
+		{
+			if (onSplitPlane[n][edge] > newMax[edge])
+			{
+				newMax[edge] = onSplitPlane[n][edge];
+			}
+		}
+		if (oldMax != newMax)
+			leftNode = AABB(oldMin, newMax);
+	}
+
+	/*if (oldMin != newMin && oldMax != newMax)
+	{
+		leftNode = AABB(oldMin, newMax);
+		rightNode = AABB(newMin, oldMax);
+
+	}*/
+
 	left = new BoxTree(leftNode); // Beware: Usage of "new"
 	right = new BoxTree(rightNode); // Beware: Usage of "new"
 

@@ -23,6 +23,13 @@ extern unsigned int RayTracingResolutionY;  // largeur fenetre
 extern int MyLightPositionsPointer;
 extern void createLightPointer();
 
+// Ray Structure
+struct Ray {
+	Vec3Df origin;
+	Vec3Df direction;
+	bool insideMaterial;
+};
+
 //use this function for any preprocessing of the mesh.
 void init();
 
@@ -49,8 +56,30 @@ void setupMySphereLightPositions();
 void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3Df & rayDestination);
 
 //intersection ray with [Blank]
-bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangle triangle, Triangle ignoreTriangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection);
-bool rayIntersectionPointBox(Vec3Df rayOrigin, Vec3Df rayDirection, AABB box, Vec3Df& pin, Vec3Df& pout);
+bool rayIntersectionPointTriangle(Ray r, Triangle triangle, Triangle ignoreTriangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection);
+bool rayIntersectionPointBox(Ray r, AABB box, Vec3Df& pin, Vec3Df& pout);
+
+// Prints the BoxTree in directory-format
+void printTree(struct BoxTree* curr, int depth);
+
+// Recursively adds the nodes of the BoxTree to "boxes" whom elements will be drawn on the screen.
+void showBoxes(struct BoxTree* curr); // adds all boxes
+void showLeavesOnly(struct BoxTree* curr); // adds only leafs
+void showIntersectionBoxOnly(Ray r, struct BoxTree* curr); // adds all intersected boxes
+void showIntersectionLeafOnly(Ray r, struct BoxTree* curr); // adds only intersected leafs
+
+// gets the minimum and maximum vertex of all triangles, used to create a bounding box
+std::pair<Vec3Df, Vec3Df> getMinAndMaxVertex();
+
+/**
+* Gets the first box int the tree "curr", closest to the camera, that intersects with the ray.
+* This Function should only be called within these pre-conditions:
+* 1 - BoxTree *curr is not NULL
+* 2 - The ray, atleast, intersects the overlapping boundingbox, or in other words the initial "curr->data". (So it should be wrapped inside an if statement).
+**/
+AABB getFirstIntersectedBox(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout);
+// gets all the intersected boxes, same 2 points for this class
+void getAllIntersectedBoxes(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout, std::vector<AABB> &intersections);
 
 // calculate the intensity of light
 double intensityOfLight(const float &distance, const float &power, const float &minimum);
