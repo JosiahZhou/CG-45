@@ -159,6 +159,7 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 
 	bool computeDirect, computeReflect, computeRefract;
 	computeDirect = computeReflect = computeRefract = false;
+	Vec3Df mirrorReflectance = Vec3Df(0,0,0);
 
 	// determine which contributions need to be computed for which materials
 	switch (intersect.material.illum()) {
@@ -173,7 +174,9 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 			break;
 		// pure mirror
 		case 3:
+			computeDirect = true;
 			computeReflect = true;
+			mirrorReflectance = intersect.material.Ka();
 			break;
 		// realistic glass (both reflection and refraction)
 		case 4:
@@ -208,7 +211,8 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 		if (ComputeRefractedRay(origRay, intersect, refractedRay)) Trace(level + 1, refractedRay, refractedColor, intersect.triangle);
 	}
 
-	color = intersect.material.Kd()*directColor + intersect.material.Ks()*reflection*reflectedColor + intersect.material.Ks()*transmission*refractedColor;
+	// TODO: figure out proper mirrorReflectance/specular usage, both should be handled differently
+	color = (Vec3Df(1,1,1) - mirrorReflectance)*intersect.material.Kd()*directColor + mirrorReflectance*reflection*reflectedColor + intersect.material.Ks()*transmission*refractedColor;
 
 	return;
 }
