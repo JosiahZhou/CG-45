@@ -33,6 +33,8 @@ void initAccelerationStructure();
 std::vector<AABB> boxes;
 BoxTree tree = BoxTree(AABB());
 
+// std::map<std::string, unsigned int> materialIndex;
+
 unsigned int maxRecursionLevel;
 
 // Ray structure
@@ -42,10 +44,17 @@ struct Ray {
 	bool insideMaterial;
 };
 
+struct Intersection {
+	Vec3Df point;
+	Triangle triangle;
+	Material material;
+	float distance;
+};
+
 // Some forward declarations needed because of recursive functions
 void ComputeDirectLight(Vec3Df pointOfIntersection, Vec3Df& directColor);
 bool ComputeReflectedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle triangleOfIntersection, Ray& reflectedRay);
-bool ComputeRefractedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle triangleOfIntersection, Ray& refractedRay);
+bool ComputeRefractedRay(Ray origRay, Intersection intersect, Ray& refractedRay);
 void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle);
 
 //use this function for any preprocessing of the mesh.
@@ -58,7 +67,8 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("dodgeColorTest.obj", true);
+	// MyMesh.loadMtl("test_scene_1.mtl", materialIndex);
+	MyMesh.loadMesh("test_scene_1.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -106,38 +116,39 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 }
 
 // returns whether the ray hit something or not
-bool Intersect(unsigned int level, const Ray ray, Vec3Df& pointOfIntersection, Triangle& triangleOfIntersection, Triangle ignoreTriangle, float& distance) {
+bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Triangle ignoreTriangle) {
 	if (level > maxRecursionLevel) return false;
 
-	// trace first trace the ray down the tree of bounding boxes
-	for (int b = 0; b < boxes.size(); b++) {
-		AABB box = boxes[b];
-		Vec3Df pin, pout;
-		// then trace the ray down to the right triangle
-		if (rayIntersectionPointBox(ray.origin, ray.direction, box, pin, pout)) {
-			for (int i = 0; i < box.triangles.size(); i++) {
-				Vec3Df intersect;
-				float distanceRay;
-				Triangle triangle = box.triangles[i];
-				// if an intersection gets found, put the resulting point and triangle in the result vars
-				if (rayIntersectionPointTriangle(ray.origin, ray.direction, triangle, ignoreTriangle, intersect, distanceRay)) {
-					pointOfIntersection = intersect;
-					triangleOfIntersection = triangle;
-					distance = distanceRay;
+	intersect.distance = INFINITY;
 
-					// if (distanceRay < 0) pointOfIntersection = pointOfIntersection + 5*ray.direction;
-
-					return true;
-				}
+	// trace the ray through all the triangles, optimization structure needs to go here still
+	for (int i = 0; i < MyMesh.triangles.size(); i++) {
+		Vec3Df intersectionPoint;
+		float distance;
+		Triangle triangle = MyMesh.triangles[i];
+		// if an intersection gets found, put the resulting point and triangle in the result vars
+		if (rayIntersectionPointTriangle(ray.origin, ray.direction, triangle, ignoreTriangle, intersectionPoint, distance)) {
+			// check if distance is smaller than previous result and larger than zero
+			if (distance < intersect.distance && distance > 0) {
+				intersect.point = intersectionPoint;
+				intersect.triangle = triangle;
+				intersect.distance = distance;
+				intersect.material = MyMesh.materials[MyMesh.triangleMaterials[i]];
 			}
+			// if (distanceRay < 0) pointOfIntersection = pointOfIntersection + 5*ray.direction;
 		}
 	}
 
-	return false;
+	if (intersect.distance < 1000000) return true;
+	else return false;
 }
 
-void Shade(unsigned int level, Ray origRay, Vec3Df pointOfIntersection, Triangle triangleOfIntersection, Vec3Df& color) {
+void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& color) {
 	Vec3Df directColor, reflectedColor, refractedColor;
+	directColor = Vec3Df(0,0,0);
+	reflectedColor = Vec3Df(0,0,0);
+	refractedColor = Vec3Df(0,0,0);
+
 	Ray reflectedRay, refractedRay;
 	float reflection, transmission;
 
@@ -146,36 +157,79 @@ void Shade(unsigned int level, Ray origRay, Vec3Df pointOfIntersection, Triangle
 	reflection = 0.5;
 	transmission = 0.5;
 
-	ComputeDirectLight(pointOfIntersection, directColor);
+	bool computeDirect, computeReflect, computeRefract;
+	computeDirect = computeReflect = computeRefract = false;
 
-	if (ComputeReflectedRay(origRay, pointOfIntersection, triangleOfIntersection, reflectedRay)) Trace(level + 1, reflectedRay, reflectedColor, triangleOfIntersection);
+	// determine which contributions need to be computed for which materials
+	switch (intersect.material.illum()) {
+		// color on, ambient on (basically only diffuse)
+		case 1:
+			computeDirect = true;
+			break;
+		// highlights on (diffuse + specular highlights)
+		case 2:
+			computeDirect = true;
+			computeReflect = true;
+			break;
+		// pure mirror
+		case 3:
+			computeReflect = true;
+			break;
+		// realistic glass (both reflection and refraction)
+		case 4:
+			computeReflect = true;
+			computeRefract = true;
+			break;
+		// general glossy material (reflection/refraction, ray trace on, fresnel off)
+		case 6:
+			computeReflect = true;
+			computeRefract = true;
+			break;
+		// pure refractive material (no reflections)
+		case 9:
+			computeRefract = true;
+			break;
+		// by default enable all three, but give a warning in the terminal
+		default:
+			computeDirect = true;
+			computeReflect = true;
+			computeRefract = true;
+			printf("Warning: unknown material type %d, please check...", intersect.material.illum());
+			break;
+	}
 
-	if (ComputeRefractedRay(origRay, pointOfIntersection, triangleOfIntersection, refractedRay)) Trace(level + 1, refractedRay, refractedColor, triangleOfIntersection);
+	if (computeDirect) ComputeDirectLight(intersect.point, directColor);
 
-	color = directColor + reflection*reflectedColor + transmission*refractedColor;
+	if (computeReflect) {
+		if (ComputeReflectedRay(origRay, intersect.point, intersect.triangle, reflectedRay)) Trace(level + 1, reflectedRay, reflectedColor, intersect.triangle);
+	}
+
+	if (computeRefract) {
+		if (ComputeRefractedRay(origRay, intersect, refractedRay)) Trace(level + 1, refractedRay, refractedColor, intersect.triangle);
+	}
+
+	color = intersect.material.Kd()*directColor + intersect.material.Ks()*reflection*reflectedColor + intersect.material.Ks()*transmission*refractedColor;
 
 	return;
 }
 
 void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) {
-	Vec3Df pointOfIntersection;
-	Triangle triangleOfIntersection;
-	float distance;
+	Intersection intersect;
 
-	if (Intersect(level, ray, pointOfIntersection, triangleOfIntersection, ignoreTriangle, distance)) {
-		if (distance < 0) {
-			Vec3Df newRayDir = ray.origin - pointOfIntersection;
+	if (Intersect(level, ray, intersect, ignoreTriangle)) {
+		if (intersect.distance < 0) {
+			Vec3Df newRayDir = ray.origin - intersect.point;
 			newRayDir.normalize();
-			pointOfIntersection = ray.origin + 5*newRayDir;
+			intersect.point = ray.origin + 5*newRayDir;
 		}
 
 		recurseTestRayOrigins[recurseTestRayCount] = ray.origin;
-		recurseTestRayDestinations[recurseTestRayCount] = pointOfIntersection;
+		recurseTestRayDestinations[recurseTestRayCount] = intersect.point;
 		recurseTestRayCount++;
 
-		std::cout << "Traced a ray on level " << level << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << distance << std::endl;
+		std::cout << "  Traced a ray on level " << level << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << intersect.distance << std::endl;
 
-		if (distance >= 0) Shade(level, ray, pointOfIntersection, triangleOfIntersection, color);
+		if (intersect.distance >= 0) Shade(level, ray, intersect, color);
 	} else {
 		color = Vec3Df(0,0,0);
 	}
@@ -196,37 +250,41 @@ bool ComputeReflectedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle trian
 	reflectedRay.origin = pointOfIntersection;
 	// calculate reflected direction vector
 	reflectedRay.direction = origRay.direction - 2*n*(Vec3Df::dotProduct(origRay.direction, n));
+	reflectedRay.direction.normalize();
 	reflectedRay.insideMaterial = origRay.insideMaterial;
 
 	return true;
 }
 
-bool ComputeRefractedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle triangleOfIntersection, Ray& refractedRay) {
-	Vec3Df n = calculateSurfaceNormal(triangleOfIntersection);
+bool ComputeRefractedRay(Ray origRay, Intersection intersect, Ray& refractedRay) {
+	Vec3Df n = calculateSurfaceNormal(intersect.triangle);
 	n.normalize();
-
-	// set outside material to air and inside to glass
-	// TODO: use actual material properties
-	float n1, n2;
-	if (origRay.insideMaterial) {
-		n1 = 1.517f;
-		n2 = 1.0f;
-	} else {
-		n1 = 1.0f;
-		n2 = 1.517f;
-	}
-
-	refractedRay.origin = pointOfIntersection;
 
 	// calculate refracted direction vector
 	Vec3Df v = origRay.direction;
 	float v_dot_n = Vec3Df::dotProduct(v, n);
-	try {
-		refractedRay.direction = n1/n2*(v - v_dot_n*n) - n*sqrt(1 - (n1*n1*(1 - v_dot_n*v_dot_n))/(n2*n2));
-	} catch (int e) {
-		std::cout << "Negative square root, no refracted ray..." << std::endl;
-		return false;
+
+	// determine if we are at material-air or air-material interface from the dotproduct of the normal and the ray
+	// NOTE: this code assumes all transitions to be with air on one side, so leave space between objects!
+	float n1, n2;
+	if (v_dot_n > 0) {
+		n1 = intersect.material.Ni();
+		n2 = 1.0f;
+		n = -n;
+		v_dot_n = Vec3Df::dotProduct(v,n);
+	} else {
+		n1 = 1.0f;
+		n2 = intersect.material.Ni();
 	}
+
+	refractedRay.origin = intersect.point;
+
+	// if the sqrt is negative, this will produce a NaN value, not cause an error
+	refractedRay.direction = n1/n2*(v - v_dot_n*n) - n*sqrt(1 - (n1*n1*(1 - v_dot_n*v_dot_n))/(n2*n2));
+	refractedRay.direction.normalize();
+
+	// check if sqrt returned something negative
+	if (std::isnan(refractedRay.direction.p[0]) || std::isnan(refractedRay.direction.p[1]) || std::isnan(refractedRay.direction.p[2])) return false;
 
 	refractedRay.insideMaterial = !(origRay.insideMaterial);
 
@@ -268,6 +326,8 @@ bool rayIntersectionPointTriangle(Vec3Df rayOrigin, Vec3Df rayDirection, Triangl
 														 //	pointOfIntersection = MyMesh.vertices[triangle.v[0]].p + u * edges[0] + v * edges[1];
 	pointOfIntersection = (1 - u - v) * MyMesh.vertices[triangle.v[0]].p + u * MyMesh.vertices[triangle.v[1]].p + v * MyMesh.vertices[triangle.v[2]].p;
 	distanceLightToIntersection = t;
+
+	// std::cout << "Found intersecting triangle (" << pointOfIntersection << ") at distance " << t << std::endl;
 
 	return true;
 }
@@ -444,29 +504,29 @@ void yourDebugDraw()
  * This is necessary for soft shadows. Soft shadows is basically the same principle as hard shadows but then with multiple light sources.
  */
 void setupMySphereLightPositions() {
-    
+
     // Clear old light positions of the sphere.
     MySphereLightPositions.clear();
-    
+
     // Loop through all the light centers.
     for (int i = 0; i < MyLightPositions.size(); i++) {
-        
+
         // We use a seed so that every scene will be the same for all lights,
         // even though we are using random points.
         std::mt19937 seed(light_speed_sphere);
         std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
-        
+
         // Retrieve the values of the current light.
         Vec3Df lightPosition = MyLightPositions[i];
         float lightSphereWidth = MyLightPositionRadius[i];
         int lightSphereAmount = MyLightPositionAmount[i];
-        
+
         // Create the list of points.
         std::vector<Vec3Df> currentLightSphere;
-        
+
         // We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
         if (MyLightPositionAmount[i] > 1 && MyLightPositionRadius[i] > 0) {
-            
+
             // Calculate position for every surface light.
             for (int i = 0; i < lightSphereAmount; i++) {
                 double theta = 2 * M_PI * rndFloat(seed);
@@ -474,14 +534,14 @@ void setupMySphereLightPositions() {
                 double x = lightPosition[0] + sin(phi) * cos(theta) * lightSphereWidth;
                 double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
                 double z = lightPosition[2] + cos(phi) * lightSphereWidth;
-                Vec3Df offset = Vec3Df(x, y, z);        
+                Vec3Df offset = Vec3Df(x, y, z);
                 currentLightSphere.push_back(offset);
             }
         } else {
             // We just add the normal light position.
             currentLightSphere.push_back(lightPosition);
         }
-        
+
         // We add list of points around the sphere into the list.
         MySphereLightPositions.push_back(currentLightSphere);
     }
@@ -517,7 +577,7 @@ void printTree(struct BoxTree* curr, int depth)
 			printf("%s---", rec[depth - 1] ? "|" : "|");
 		else
 			printf("%s   ", rec[i] ? "|" : "  ");
-	printf("%d\n", curr->data.triangles.size());
+	printf("%ld\n", curr->data.triangles.size());
 	rec[depth] = 1;
 	printTree(curr->right, depth + 1);
 	rec[depth] = 0;
