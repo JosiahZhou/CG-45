@@ -117,7 +117,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 
 // returns whether the ray hit something or not
 bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Triangle ignoreTriangle) {
-	if (level > maxRecursionLevel) return false;
+	// if (level > maxRecursionLevel) return false;
 
 	intersect.distance = INFINITY;
 
@@ -203,11 +203,11 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 
 	if (computeDirect) ComputeDirectLight(intersect.point, directColor);
 
-	if (computeReflect) {
+	if (computeReflect && level + 1 <= maxRecursionLevel) {
 		if (ComputeReflectedRay(origRay, intersect.point, intersect.triangle, reflectedRay)) Trace(level + 1, reflectedRay, reflectedColor, intersect.triangle);
 	}
 
-	if (computeRefract) {
+	if (computeRefract && level + 1 <= maxRecursionLevel) {
 		if (ComputeRefractedRay(origRay, intersect, refractedRay)) Trace(level + 1, refractedRay, refractedColor, intersect.triangle);
 	}
 
