@@ -247,9 +247,6 @@ void keyboard(unsigned char key, int x, int y)
 		std::cout << " " << std::endl;
 		auto start = std::chrono::system_clock::now();
 
-		for (unsigned int y = 0; y < WindowSize_Y; ++y){
-			for (unsigned int x = 0; x < WindowSize_X; ++x)
-
 		float doneLines = 0.0f;
 		//openMP runs this for loop in parallel.
 		#pragma omp parallel for ordered schedule(dynamic)
