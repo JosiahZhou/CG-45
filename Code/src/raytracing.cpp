@@ -109,7 +109,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 	if (rayIntersectionPointBox(r, tree.data, pin, pout))
 	{
 		//std::vector<AABB> intersections;
-		//getAllIntersectedLeafs(r, &tree, pin, pout, intersections); 
+		//getAllIntersectedLeafs(r, &tree, pin, pout, intersections);
 		//std::sort(intersections.begin(), intersections.end(), less_than());
 
 		std::stack<BoxTree> s;
@@ -313,9 +313,9 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 }
 
 void ComputeDirectLight(Vec3Df pointOfIntersection, Vec3Df& directColor) {
-	if (isInShadow(pointOfIntersection, Triangle())) {
-		directColor = Vec3Df(0, 0, 0); // Hard shadow, item is in the shadow thus color is black
-	}
+	// if (isInShadow(pointOfIntersection, Triangle())) {
+	// 	directColor = Vec3Df(0, 0, 0); // Hard shadow, item is in the shadow thus color is black
+	// }
 
 	/*
 	Better if this method is removed or the return should be a boolean, it is not necessary  to calculate colors, reflections if there's a shadow cast on the triangle/intersection.
@@ -588,29 +588,29 @@ void yourDebugDraw()
  * This is necessary for soft shadows. Soft shadows is basically the same principle as hard shadows but then with multiple light sources.
  */
 void setupMySphereLightPositions() {
-    
+
     // Clear old light positions of the sphere.
     MySphereLightPositions.clear();
-    
+
     // Loop through all the light centers.
     for (int i = 0; i < MyLightPositions.size(); i++) {
-        
+
         // We use a seed so that every scene will be the same for all lights,
         // even though we are using random points.
         std::mt19937 seed(light_speed_sphere);
         std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
-        
+
         // Retrieve the values of the current light.
         Vec3Df lightPosition = MyLightPositions[i];
         float lightSphereWidth = MyLightPositionRadius[i];
         int lightSphereAmount = MyLightPositionAmount[i];
-        
+
         // Create the list of points.
         std::vector<Vec3Df> currentLightSphere;
-        
+
         // We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
         if (MyLightPositionAmount[i] > 1 && MyLightPositionRadius[i] > 0) {
-            
+
             // Calculate position for every surface light.
             for (int i = 0; i < lightSphereAmount; i++) {
                 double theta = 2 *  M_PI * rndFloat(seed);
@@ -618,14 +618,14 @@ void setupMySphereLightPositions() {
                 double x = lightPosition[0] + sin(phi) * cos(theta) * lightSphereWidth;
                 double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
                 double z = lightPosition[2] + cos(phi) * lightSphereWidth;
-                Vec3Df offset = Vec3Df(x, y, z);        
+                Vec3Df offset = Vec3Df(x, y, z);
                 currentLightSphere.push_back(offset);
             }
         } else {
             // We just add the normal light position.
             currentLightSphere.push_back(lightPosition);
         }
-        
+
         // We add list of points around the sphere into the list.
         MySphereLightPositions.push_back(currentLightSphere);
     }
@@ -885,7 +885,7 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		//boxes.push_back(getFirstIntersectedBoxFast(r, &tree, pin, pout).data);
 
 		std::cout << tree.left->data.triangles.size() << std::endl;
-	
+
 		printTree(&tree, 0);
 
 		/*if (rayIntersectionPointBox(rayOrigin, normRayDirection, boxes[0], pin, pout))
@@ -908,7 +908,7 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		//showLeavesOnly(&tree);
 		//showIntersectionBoxOnly(rayOrigin, normRayDirection, &tree);
 		//showIntersectionLeafOnly(r, &tree);
-		getAllIntersectedLeafs(r, &tree, Vec3Df(), Vec3Df(), boxes);
+		// getAllIntersectedLeafs(r, &tree, Vec3Df(), Vec3Df(), boxes);
 	}
 	break;
 	case 'x':
@@ -1109,7 +1109,7 @@ AABB::AABB(const Vec3Df min, const Vec3Df max, const bool full)
 				triangles.push_back(MyMesh.triangles[i]);
 			}
 		}
-		else 
+		else
 		{
 			if (withinBox(MyMesh.triangles[i]))
 			{
