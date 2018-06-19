@@ -38,3 +38,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${OPENGL_INCLUDE_DIR} 
     ${GLUT_INCLUDE_DIR} 
     ${INCLUDE_DIR})
+
+# Required OpenMP
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+
+include(FindOpenMP)
+if(OPENMP_FOUND)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+else(OPENMP_FOUND)
+  message("ERROR: OpenMP could not be found.")
+endif(OPENMP_FOUND)
