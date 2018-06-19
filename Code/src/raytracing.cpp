@@ -13,6 +13,8 @@
 #include "raytracing.h"
 #include <random>
 #include <chrono>
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 int light_speed_sphere = 12391;
 
@@ -469,7 +471,7 @@ void setupMySphereLightPositions() {
             
             // Calculate position for every surface light.
             for (int i = 0; i < lightSphereAmount; i++) {
-                double theta = 2 * M_PI * rndFloat(seed);
+                double theta = 2 *  M_PI * rndFloat(seed);
                 double phi = acos(1 - 2 * rndFloat(seed));
                 double x = lightPosition[0] + sin(phi) * cos(theta) * lightSphereWidth;
                 double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
