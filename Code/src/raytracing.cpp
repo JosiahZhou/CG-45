@@ -13,6 +13,8 @@
 #include "raytracing.h"
 #include <random>
 #include <chrono>
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -586,48 +588,47 @@ void yourDebugDraw()
  * This is necessary for soft shadows. Soft shadows is basically the same principle as hard shadows but then with multiple light sources.
  */
 void setupMySphereLightPositions() {
-
-	// Clear old light positions of the sphere.
-	MySphereLightPositions.clear();
-
-	// Loop through all the light centers.
-	for (int i = 0; i < MyLightPositions.size(); i++) {
-
-		// We use a seed so that every scene will be the same for all lights,
-		// even though we are using random points.
-		std::mt19937 seed(light_speed_sphere);
-		std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
-
-		// Retrieve the values of the current light.
-		Vec3Df lightPosition = MyLightPositions[i];
-		float lightSphereWidth = MyLightPositionRadius[i];
-		int lightSphereAmount = MyLightPositionAmount[i];
-
-		// Create the list of points.
-		std::vector<Vec3Df> currentLightSphere;
-
-		// We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
-		if (MyLightPositionAmount[i] > 1 && MyLightPositionRadius[i] > 0) {
-
-			// Calculate position for every surface light.
-			for (int i = 0; i < lightSphereAmount; i++) {
-				double theta = 2 * M_PI * rndFloat(seed);
-				double phi = acos(1 - 2 * rndFloat(seed));
-				double x = lightPosition[0] + sin(phi) * cos(theta) * lightSphereWidth;
-				double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
-				double z = lightPosition[2] + cos(phi) * lightSphereWidth;
-				Vec3Df offset = Vec3Df(x, y, z);
-				currentLightSphere.push_back(offset);
-			}
-		}
-		else {
-			// We just add the normal light position.
-			currentLightSphere.push_back(lightPosition);
-		}
-
-		// We add list of points around the sphere into the list.
-		MySphereLightPositions.push_back(currentLightSphere);
-	}
+    
+    // Clear old light positions of the sphere.
+    MySphereLightPositions.clear();
+    
+    // Loop through all the light centers.
+    for (int i = 0; i < MyLightPositions.size(); i++) {
+        
+        // We use a seed so that every scene will be the same for all lights,
+        // even though we are using random points.
+        std::mt19937 seed(light_speed_sphere);
+        std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
+        
+        // Retrieve the values of the current light.
+        Vec3Df lightPosition = MyLightPositions[i];
+        float lightSphereWidth = MyLightPositionRadius[i];
+        int lightSphereAmount = MyLightPositionAmount[i];
+        
+        // Create the list of points.
+        std::vector<Vec3Df> currentLightSphere;
+        
+        // We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
+        if (MyLightPositionAmount[i] > 1 && MyLightPositionRadius[i] > 0) {
+            
+            // Calculate position for every surface light.
+            for (int i = 0; i < lightSphereAmount; i++) {
+                double theta = 2 *  M_PI * rndFloat(seed);
+                double phi = acos(1 - 2 * rndFloat(seed));
+                double x = lightPosition[0] + sin(phi) * cos(theta) * lightSphereWidth;
+                double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
+                double z = lightPosition[2] + cos(phi) * lightSphereWidth;
+                Vec3Df offset = Vec3Df(x, y, z);        
+                currentLightSphere.push_back(offset);
+            }
+        } else {
+            // We just add the normal light position.
+            currentLightSphere.push_back(lightPosition);
+        }
+        
+        // We add list of points around the sphere into the list.
+        MySphereLightPositions.push_back(currentLightSphere);
+    }
 }
 
 /**
