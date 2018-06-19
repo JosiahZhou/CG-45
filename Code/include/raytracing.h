@@ -8,13 +8,27 @@
 //this is an important file, raytracing.cpp is what you need to fill out
 //In principle, you can do the entire project ONLY by working in these two files
 
+class AABB;
 extern Mesh MyMesh; //Main mesh
 extern std::vector<Vec3Df> MyLightPositions;
+extern std::vector<int> MyLightPositionAmount;
+extern std::vector<float> MyLightPositionRadius;
+extern std::vector<int> MyLightPositionPower;
+extern std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 extern Vec3Df MyCameraPosition; //currCamera
 extern unsigned int WindowSize_X;//window resolution width
 extern unsigned int WindowSize_Y;//window resolution height
 extern unsigned int RayTracingResolutionX;  // largeur fenetre
 extern unsigned int RayTracingResolutionY;  // largeur fenetre
+extern int MyLightPositionsPointer;
+extern void createLightPointer();
+
+// Ray Structure
+struct Ray {
+	Vec3Df origin;
+	Vec3Df direction;
+	bool insideMaterial;
+};
 
 //use this function for any preprocessing of the mesh.
 void init();
@@ -28,10 +42,99 @@ void produceRay(int x_I, int y_I, Vec3Df & origin, Vec3Df & dest);
 //your main function to rewrite
 Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest);
 
+// Debug Ray
+Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t);
+//Shadow test
+bool isInShadow(Vec3Df & intersection, Triangle & triangle);
 //a function to debug --- you can draw in OpenGL here
 void yourDebugDraw();
+
+// function to setip a sphere around a point (light position).
+void setupMySphereLightPositions();
 
 //want keyboard interaction? Here it is...
 void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3Df & rayDestination);
 
+//intersection ray with [Blank]
+bool rayIntersectionPointTriangle(Ray r, Triangle triangle, Triangle ignoreTriangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection);
+bool rayIntersectionPointBox(Ray r, AABB box, Vec3Df& pin, Vec3Df& pout);
+
+// Prints the BoxTree in directory-format
+void printTree(struct BoxTree* curr, int depth);
+
+// Recursively adds the nodes of the BoxTree to "boxes" whom elements will be drawn on the screen.
+void showBoxes(struct BoxTree* curr); // adds all boxes
+void showLeavesOnly(struct BoxTree* curr); // adds only leafs
+void showIntersectionBoxOnly(Ray r, struct BoxTree* curr); // adds all intersected boxes
+void showIntersectionLeafOnly(Ray r, struct BoxTree* curr); // adds only intersected leafs
+
+// gets the minimum and maximum vertex of all triangles, used to create a bounding box
+std::pair<Vec3Df, Vec3Df> getMinAndMaxVertex();
+
+/**
+* Gets the first box int the tree "curr", closest to the camera, that intersects with the ray.
+* This Function should only be called within these pre-conditions:
+* 1 - BoxTree *curr is not NULL
+* 2 - The ray, atleast, intersects the overlapping boundingbox, or in other words the initial "curr->data". (So it should be wrapped inside an if statement).
+**/
+AABB getFirstIntersectedBox(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout);
+BoxTree* getFirstIntersectedBoxFast(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout);
+
+// gets all the intersected boxes, same 2 points for this class
+void getAllIntersectedLeafs(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout, std::vector<AABB> &intersections);
+
+// calculate the intensity of light
+double intensityOfLight(const float &distance, const float &power, const float &minimum);
+
+Vec3Df calculateSurfaceNormal(Triangle triangle);
+Vec3Df calculateCentroid(const Triangle t);
+
+/**********************************************************************************************
+**Axis-Aligned BoundingBox class
+***********************************************************************************************/
+class AABB {
+public:
+	AABB();
+	//AABB(const Vec3Df min, const Vec3Df max);
+	AABB(const Vec3Df min, const Vec3Df max, const bool full);
+
+	//Returns true if a triangle is partially inside the boundingbox
+	bool withinBox(const Triangle t);
+
+	//Returns true if a triangle is entirely inside the boundingbox
+	bool withinBoxFull(const Triangle t);
+
+	//highlights the box edges
+	void highlightBoxEdges();
+
+	// min and max value
+	std::pair<Vec3Df, Vec3Df> minmax_;
+
+	//vertices of the bounding box
+	std::vector<Vertex> vertices_;
+
+	//the sides of the box
+	std::vector<std::pair<Vec3Df, Vec3Df>> sides_;
+
+	//triangles residing inside the bounding box
+	std::vector<Triangle> triangles;
+};
+
+/**********************************************************************************************
+**Axis-Aligned BoundingBox Tree class
+***********************************************************************************************/
+class BoxTree {
+public:
+	BoxTree(const AABB data);
+	BoxTree(const AABB data, BoxTree *left, BoxTree *right);
+
+	// splits the box ("data") recursively into smaller parts, and adds them to the tree, until it the amount of triangles within the box is smaller than "minTriangles"
+	void splitMiddle(int minTriangles);
+	void splitAvg(int minTriangles, const bool full);
+
+	AABB data;
+	BoxTree *parent = NULL;
+	BoxTree *left = NULL;
+	BoxTree *right = NULL;
+};
 #endif

@@ -9,6 +9,7 @@
 #include <windows.h>
 #endif
 #include <stdlib.h>
+#include <chrono>
 #include <math.h>
 #include <assert.h>
 #include "raytracing.h"
@@ -31,12 +32,17 @@ Vec3Df MyCameraPosition;
 //used for the real-time rendering is NOT one of these, 
 //but following the camera instead.
 std::vector<Vec3Df> MyLightPositions;
+std::vector<int> MyLightPositionAmount;
+std::vector<float> MyLightPositionRadius;
+std::vector<int> MyLightPositionPower;
+int MyLightPositionsPointer = 0;
+std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 
 //Main mesh 
 Mesh MyMesh; 
 
-unsigned int WindowSize_X = 800;  // resolution X
-unsigned int WindowSize_Y = 800;  // resolution Y
+unsigned int WindowSize_X = 1080;  // resolution X
+unsigned int WindowSize_Y = 1080;  // resolution Y
 
 
 
@@ -55,8 +61,6 @@ void animate()
 	MyCameraPosition=getCameraPosition();
 	glutPostRedisplay();
 }
-
-
 
 void display(void);
 void reshape(int w, int h);
@@ -193,14 +197,14 @@ void produceRay(int x_I, int y_I, Vec3Df * origin, Vec3Df * dest)
 		dest->p[2]=float(z);
 }
 
-
-
-
-
-
-
-
-
+// Setup of the light pointer - this is called in the init of the raytracer itself.
+void createLightPointer(){
+    MyLightPositions.push_back(getCameraPosition());
+    MyLightPositionAmount.push_back(15);
+    MyLightPositionPower.push_back(1250);
+    MyLightPositionRadius.push_back(0.2f);
+    setupMySphereLightPositions();
+}
 
 // react to keyboard input
 void keyboard(unsigned char key, int x, int y)
@@ -219,12 +223,12 @@ void keyboard(unsigned char key, int x, int y)
 	case 'r':
 	{
 		//Pressing r will launch the raytracing.
-		cout<<"Raytracing"<<endl;
-				
+		cout << "Raytracing" << endl;
+
 
 		//Setup an image with the size of the current image.
-		Image result(WindowSize_X,WindowSize_Y);
-		
+		Image result(WindowSize_X, WindowSize_Y);
+
 		//produce the rays for each pixel, by first computing
 		//the rays for the corners of the frustum.
 		Vec3Df origin00, dest00;
@@ -234,31 +238,44 @@ void keyboard(unsigned char key, int x, int y)
 		Vec3Df origin, dest;
 
 
-		produceRay(0,0, &origin00, &dest00);
-		produceRay(0,WindowSize_Y-1, &origin01, &dest01);
-		produceRay(WindowSize_X-1,0, &origin10, &dest10);
-		produceRay(WindowSize_X-1,WindowSize_Y-1, &origin11, &dest11);
+		produceRay(0, 0, &origin00, &dest00);
+		produceRay(0, WindowSize_Y - 1, &origin01, &dest01);
+		produceRay(WindowSize_X - 1, 0, &origin10, &dest10);
+		produceRay(WindowSize_X - 1, WindowSize_Y - 1, &origin11, &dest11);
 
-		
-		for (unsigned int y=0; y<WindowSize_Y;++y)
-			for (unsigned int x=0; x<WindowSize_X;++x)
+		double percentage = 0.0;
+		std::cout << " " << std::endl;
+		auto start = std::chrono::system_clock::now();
+
+		float doneLines = 0.0f;
+		//openMP runs this for loop in parallel.
+		#pragma omp parallel for ordered schedule(dynamic)
+		for (int y=0; y<WindowSize_Y;++y) {
+			for (int x=0; x<WindowSize_X;++x)
 			{
 				//produce the rays for each pixel, by interpolating 
 				//the four rays of the frustum corners.
-				float xscale=1.0f-float(x)/(WindowSize_X-1);
-				float yscale=1.0f-float(y)/(WindowSize_Y-1);
+				float xscale = 1.0f - float(x) / (WindowSize_X - 1);
+				float yscale = 1.0f - float(y) / (WindowSize_Y - 1);
 
-				origin=yscale*(xscale*origin00+(1-xscale)*origin10)+
-					(1-yscale)*(xscale*origin01+(1-xscale)*origin11);
-				dest=yscale*(xscale*dest00+(1-xscale)*dest10)+
-					(1-yscale)*(xscale*dest01+(1-xscale)*dest11);
+				origin = yscale * (xscale*origin00 + (1 - xscale)*origin10) +
+					(1 - yscale)*(xscale*origin01 + (1 - xscale)*origin11);
+				dest = yscale * (xscale*dest00 + (1 - xscale)*dest10) +
+					(1 - yscale)*(xscale*dest01 + (1 - xscale)*dest11);
 
 				//launch raytracing for the given ray.
 				Vec3Df rgb = performRayTracing(origin, dest);
 				//store the result in an image 
-				result.setPixel(x,y, RGBValue(rgb[0], rgb[1], rgb[2]));
+				result.setPixel(x, y, RGBValue(rgb[0], rgb[1], rgb[2]));
 			}
+			percentage = (double)y / (double)(WindowSize_Y-1) * 100;
+			auto end = std::chrono::system_clock::now();
+			std::chrono::duration<double> diff = end - start;
+			
+			printf("\rPercentage done: [%6.4f%%] \tElapsed time (seconds) : [%4.2f]", percentage, diff.count());
 
+
+		}
 		result.writeImage("result.bmp");
 		break;
 	}
