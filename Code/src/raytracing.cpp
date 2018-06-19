@@ -16,6 +16,7 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <stack>
 
 int light_speed_sphere = 12391;
 
@@ -56,7 +57,6 @@ void init()
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
 	MyMesh.loadMesh("dodgeColorTest.obj", true);
-	//MyMesh.loadMesh("box.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -80,15 +80,14 @@ void init()
 BoxTree initBoxTree()
 {
 	std::pair<Vec3Df, Vec3Df> minMax = getMinAndMaxVertex();
-	AABB aabb = AABB(minMax.first, minMax.second);
+	AABB aabb = AABB(minMax.first, minMax.second, true);
 	return BoxTree(aabb);
 }
 
 void initAccelerationStructure()
 {
 	//tree.splitMiddle(4000);
-
-	tree.splitAvg(8000);
+	tree.splitAvg(4000, true);
 	showBoxes(&tree);
 	printTree(&tree, 0);
 }
@@ -104,29 +103,21 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 	bool intersect;
 	Ray r = { origin, direction, false };
 
-	// IMPORTANT:
-	// Instead of looping through boxes, you can either do this:
-	/*Vec3Df pin, pout;
+	Vec3Df pin, pout;
 	if (rayIntersectionPointBox(r, tree.data, pin, pout))
 	{
-		AABB box = getFirstIntersectedBox(r, &tree, pin, pout);
-	}*/
-	// or:
-	/*Vec3Df pin, pout;
-	if (rayIntersectionPointBox(r, tree.data, pin, pout))
-	{
-		std::vector<AABB> boxes;
-		getAllIntersectedBoxes(r, &tree, pin, pout, boxes);
-	}*/
+		//std::vector<AABB> intersections;
+		//getAllIntersectedLeafs(r, &tree, pin, pout, intersections); 
+		//std::sort(intersections.begin(), intersections.end(), less_than());
 
-
-	for (int b = 0; b < boxes.size(); b++)
-	{
-		intersect = false;
-		AABB box = boxes[b];
-		Vec3Df pin, pout;
-		if (rayIntersectionPointBox(r, box, pin, pout))
+		std::stack<BoxTree> s;
+		s.push(*getFirstIntersectedBoxFast(r, &tree, pin, pout));
+		while(!s.empty())
 		{
+			intersect = false;
+			BoxTree Btree = s.top();
+			AABB box = Btree.data;
+			s.pop();
 			for (int i = 0; i < box.triangles.size(); i++)
 			{
 				Vec3Df pointOfIntersection;
@@ -134,29 +125,34 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 				Triangle triangle = box.triangles[i];
 				if (rayIntersectionPointTriangle(r, triangle, Triangle(), pointOfIntersection, distanceRay))
 				{
+					intersect = true;
 					if (minDist > distanceRay && distanceRay > 0) {
 						t = triangle;
 						foundIntersection = pointOfIntersection;
 						minDist = distanceRay;
-						intersect = true;
 					}
 				}
 			}
+
 			if (intersect) {
 				if (isInShadow(foundIntersection, t)) {
 					return Vec3Df(0, 0, 0); // shadow == black
 				}
 				else {
 					// color and other stuff here as well...
-					return Vec3Df(foundIntersection[0], foundIntersection[1], foundIntersection[2]); // light == white
+					return Vec3Df(1, 1, 1); // light == white
 				}
 			}
+			else
+			{
+				if (Btree.parent != NULL)
+					s.push(*Btree.parent);
+			}
 		}
-
 	}
 	//caclulate shadows --> only for the minimum distance ( closestIntersectionPoint)
 	// color and other stuff here as well...
-	return Vec3Df(0, 0, 0);
+	return Vec3Df(1, 0, 0);
 	//return Vec3Df(dest[0], dest[1], dest[2]);
 }
 
@@ -190,6 +186,7 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 	}
 	return foundIntersection;
 }
+
 bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 	for (Vec3Df light : MyLightPositions) {
 		Vec3Df origin = intersection;;
@@ -462,7 +459,7 @@ std::pair<Vec3Df, Vec3Df> getMinAndMaxVertex()
 	Vec3Df min = Vec3Df(INT32_MAX, INT32_MAX, INT32_MAX);
 	Vec3Df max = Vec3Df(INT32_MIN, INT32_MIN, INT32_MIN);
 
-	for (int i = 0; i < MyMesh.vertices.size(); ++i)
+	for (int i = 0; i < MyMesh.vertices.size(); i++)
 	{
 		min[0] = MyMesh.vertices[i].p[0] < min[0] ? MyMesh.vertices[i].p[0] : min[0];
 		min[1] = MyMesh.vertices[i].p[1] < min[1] ? MyMesh.vertices[i].p[1] : min[1];
@@ -752,12 +749,41 @@ AABB getFirstIntersectedBox(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout)
 	return curr->data;
 }
 
-void getAllIntersectedBoxes(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout, std::vector<AABB> &intersections)
+BoxTree* getFirstIntersectedBoxFast(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout)
+{
+	Vec3Df testpinL, testpinR;
+	if (curr->left == NULL || curr->right == NULL)
+	{
+		return curr;
+	}
+
+	bool intersectL = rayIntersectionPointBox(r, curr->left->data, testpinL, pout);
+	bool intersectR = rayIntersectionPointBox(r, curr->right->data, testpinR, pout);
+
+	if (intersectL && intersectR)
+	{
+		if (Vec3Df::distance(testpinL, r.origin) < Vec3Df::distance(testpinR, r.origin))
+			return getFirstIntersectedBoxFast(r, curr->left, pin, pout);
+		return getFirstIntersectedBoxFast(r, curr->right, pin, pout);
+	}
+	else if (intersectL)
+	{
+		return getFirstIntersectedBoxFast(r, curr->left, pin, pout);
+	}
+	else if (intersectR)
+	{
+		return getFirstIntersectedBoxFast(r, curr->right, pin, pout);
+	}
+
+	return curr;
+}
+
+void getAllIntersectedLeafs(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout, std::vector<AABB> &intersections)
 {
 	if (curr == NULL)return;
-	if (curr->left == NULL && curr->right == NULL && rayIntersectionPointBox(r, curr->data, pin, pout)) intersections.push_back(curr->data);
-	showIntersectionLeafOnly(r, curr->left);
-	showIntersectionLeafOnly(r, curr->right);
+	if (rayIntersectionPointBox(r, curr->data, pin, pout)) intersections.push_back(curr->data);
+	getAllIntersectedLeafs(r, curr->left, pin, pout, intersections);
+	getAllIntersectedLeafs(r, curr->right, pin, pout, intersections);
 }
 
 //yourKeyboardFunc is used to deal with keyboard input.
@@ -854,7 +880,11 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		//tree.splitAvg(4000);
 
 		// Draw smallest Intersected Box
-		boxes.push_back(getFirstIntersectedBox(r, &tree, pin, pout));
+		//boxes.push_back(getFirstIntersectedBox(r, &tree, pin, pout));
+		//boxes.push_back(getFirstIntersectedBoxFast(r, &tree, pin, pout).data);
+
+		std::cout << tree.left->data.triangles.size() << std::endl;
+	
 		printTree(&tree, 0);
 
 		/*if (rayIntersectionPointBox(rayOrigin, normRayDirection, boxes[0], pin, pout))
@@ -877,7 +907,7 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		//showLeavesOnly(&tree);
 		//showIntersectionBoxOnly(rayOrigin, normRayDirection, &tree);
 		//showIntersectionLeafOnly(r, &tree);
-		getAllIntersectedBoxes(r, &tree, Vec3Df(), Vec3Df(), boxes);
+		getAllIntersectedLeafs(r, &tree, Vec3Df(), Vec3Df(), boxes);
 	}
 	break;
 	case 'x':
@@ -969,7 +999,7 @@ AABB::AABB()
 	triangles = std::vector<Triangle>();
 }
 
-AABB::AABB(const Vec3Df min, const Vec3Df max)
+AABB::AABB(const Vec3Df min, const Vec3Df max, const bool full)
 {
 	minmax_ = std::pair<Vec3Df, Vec3Df>(min, max);
 	vertices_ = std::vector<Vertex>();
@@ -1071,9 +1101,19 @@ AABB::AABB(const Vec3Df min, const Vec3Df max)
 	for (int i = 0; i < MyMesh.triangles.size(); i++)
 	{
 		// WithinBox/WithinBoxFull: You Decide...
-		if (withinBoxFull(MyMesh.triangles[i]))
+		if (full)
 		{
-			triangles.push_back(MyMesh.triangles[i]);
+			if (withinBoxFull(MyMesh.triangles[i]))
+			{
+				triangles.push_back(MyMesh.triangles[i]);
+			}
+		}
+		else 
+		{
+			if (withinBox(MyMesh.triangles[i]))
+			{
+				triangles.push_back(MyMesh.triangles[i]);
+			}
 		}
 	}
 }
@@ -1205,7 +1245,7 @@ void BoxTree::splitMiddle(int minTriangles)
 			}
 		}
 
-		data = AABB(min, max);
+		data = AABB(min, max, false);
 	}
 
 	if (data.triangles.size() < minTriangles)
@@ -1227,7 +1267,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `. |   `. |
 		//     `+------+
 		Vec3Df midPoint = (data.vertices_[3].p + data.vertices_[7].p) / 2.0f;
-		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
 		left = new BoxTree(leftNode); // Beware: Usage of "new"
 
 		//	+------+
@@ -1238,7 +1278,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `. |   `. |
 		//     `+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[4].p) / 2.0f;
-		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
 		right = new BoxTree(rightNode); // Beware: Usage of "new"
 	}
 	else if (edgeY > edgeX && edgeY > edgeZ)
@@ -1251,7 +1291,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `. |   `. |
 		//     `+------6
 		Vec3Df midPoint = (data.vertices_[6].p + data.vertices_[7].p) / 2.0f;
-		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
 		left = new BoxTree(leftNode); // Beware: Usage of "new"
 
 		//	2------+
@@ -1262,7 +1302,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `. |   `. |
 		//     `+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[2].p) / 2.0f;
-		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
 		right = new BoxTree(rightNode); // Beware: Usage of "new"
 
 	}
@@ -1276,7 +1316,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `. |   `. |
 		//     `+------+
 		Vec3Df midPoint = (data.vertices_[5].p + data.vertices_[7].p) / 2.0f;
-		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
 		left = new BoxTree(leftNode); // Beware: Usage of "new"
 
 		//	+------+
@@ -1287,7 +1327,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `X |   `. |
 		//     1+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[1].p) / 2.0f;
-		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
 		right = new BoxTree(rightNode); // Beware: Usage of "new"
 
 	}
@@ -1296,7 +1336,7 @@ void BoxTree::splitMiddle(int minTriangles)
 	right->splitMiddle(minTriangles);
 }
 
-void BoxTree::splitAvg(int minTriangles)
+void BoxTree::splitAvg(int minTriangles, const bool full)
 {
 	// save min and max
 	Vec3Df oldMin = Vec3Df(data.minmax_.first[0], data.minmax_.first[1], data.minmax_.first[2]);
@@ -1330,7 +1370,7 @@ void BoxTree::splitAvg(int minTriangles)
 				}
 			}
 		}
-		data = AABB(min, max);
+		data = AABB(min, max, full);
 	}
 
 	if (data.triangles.size() < minTriangles)
@@ -1355,81 +1395,28 @@ void BoxTree::splitAvg(int minTriangles)
 
 	avg /= ((float)data.triangles.size() * 3.0f);
 
-	int edge = 0;
+	int edge = 2;
 	if (edgeX > edgeY && edgeX > edgeZ)
 	{
-		newMin[0] = avg[0];
-		newMax[0] = avg[0];
+		edge = 0;
 	}
 	else if (edgeY > edgeX && edgeY > edgeZ)
 	{
-		newMin[1] = avg[1];
-		newMax[1] = avg[1];
 		edge = 1;
 	}
-	else
-	{
-		newMin[2] = avg[2];
-		newMax[2] = avg[2];
-		edge = 2;
-	}
 
-	AABB leftNode = AABB(oldMin, newMax);
-	AABB rightNode = AABB(newMin, oldMax);
+	newMin[edge] = avg[edge];
+	newMax[edge] = avg[edge];
 
-	//Vector of vertices of triangles that are located on the splitting plane.
-	std::vector<Vec3Df> onSplitPlane;
-
-	for (int i = 0; i < data.triangles.size(); i++)
-	{
-		if (leftNode.withinBox(data.triangles[i]) && rightNode.withinBox(data.triangles[i]))
-		{
-			for (int j = 0; j < 3; j++)
-			{
-				onSplitPlane.push_back(MyMesh.vertices[data.triangles[i].v[j]].p);
-			}
-		}
-	}
-
-
-
-	//if the average coord of the splitting axis is larger than (or equal to) the middle of the splitting axis,
-	//move newMin in an attempt to fully contain the triangles on the splitting plane
-	if (avg[edge] >= (oldMin[edge] + ((oldMax[edge] - oldMin[edge]) / 2.0f)))
-	{
-		for (int n = 0; n < onSplitPlane.size(); n++)
-		{
-			if (onSplitPlane[n][edge] < newMin[edge])
-			{
-				newMin[edge] = onSplitPlane[n][edge];
-			}
-		}
-		if (oldMin != newMin)
-			rightNode = AABB(newMin, oldMax);
-	}
-	else //otherwise, move newMax in an attempt to fully contain the triangles on the splitting plane
-	{
-		for (int n = 0; n < onSplitPlane.size(); n++)
-		{
-			if (onSplitPlane[n][edge] > newMax[edge])
-			{
-				newMax[edge] = onSplitPlane[n][edge];
-			}
-		}
-		if (oldMax != newMax)
-			leftNode = AABB(oldMin, newMax);
-	}
-
-	/*if (oldMin != newMin && oldMax != newMax)
-	{
-		leftNode = AABB(oldMin, newMax);
-		rightNode = AABB(newMin, oldMax);
-
-	}*/
+	AABB leftNode = AABB(oldMin, newMax, full);
+	AABB rightNode = AABB(newMin, oldMax, !full);
 
 	left = new BoxTree(leftNode); // Beware: Usage of "new"
 	right = new BoxTree(rightNode); // Beware: Usage of "new"
 
-	left->splitAvg(minTriangles);
-	right->splitAvg(minTriangles);
+	left->parent = this;
+	right->parent = this;
+
+	left->splitAvg(minTriangles, full);
+	right->splitAvg(minTriangles, !full);
 }

@@ -78,8 +78,10 @@ std::pair<Vec3Df, Vec3Df> getMinAndMaxVertex();
 * 2 - The ray, atleast, intersects the overlapping boundingbox, or in other words the initial "curr->data". (So it should be wrapped inside an if statement).
 **/
 AABB getFirstIntersectedBox(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout);
+BoxTree* getFirstIntersectedBoxFast(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout);
+
 // gets all the intersected boxes, same 2 points for this class
-void getAllIntersectedBoxes(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout, std::vector<AABB> &intersections);
+void getAllIntersectedLeafs(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout, std::vector<AABB> &intersections);
 
 // calculate the intensity of light
 double intensityOfLight(const float &distance, const float &power, const float &minimum);
@@ -93,7 +95,8 @@ Vec3Df calculateCentroid(const Triangle t);
 class AABB {
 public:
 	AABB();
-	AABB(const Vec3Df min, const Vec3Df max);
+	//AABB(const Vec3Df min, const Vec3Df max);
+	AABB(const Vec3Df min, const Vec3Df max, const bool full);
 
 	//Returns true if a triangle is partially inside the boundingbox
 	bool withinBox(const Triangle t);
@@ -127,9 +130,10 @@ public:
 
 	// splits the box ("data") recursively into smaller parts, and adds them to the tree, until it the amount of triangles within the box is smaller than "minTriangles"
 	void splitMiddle(int minTriangles);
-	void splitAvg(int minTriangles);
+	void splitAvg(int minTriangles, const bool full);
 
 	AABB data;
+	BoxTree *parent = NULL;
 	BoxTree *left = NULL;
 	BoxTree *right = NULL;
 };
