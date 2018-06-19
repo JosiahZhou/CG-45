@@ -132,16 +132,17 @@ public:
 ***********************************************************************************************/
 class BoxTree {
 public:
-	BoxTree(const AABB data);
-	BoxTree(const AABB data, BoxTree *left, BoxTree *right);
+	BoxTree(const AABB data, int level);
+	BoxTree(const AABB data, BoxTree *left, BoxTree *right, int level);
 
 	// splits the box ("data") recursively into smaller parts, and adds them to the tree, until it the amount of triangles within the box is smaller than "minTriangles"
-	void splitMiddle(int minTriangles);
-	void splitAvg(int minTriangles, const bool full);
+	void splitMiddle(int minTriangles, int maxLevel);
+	void splitAvg(int minTriangles, const bool full, int maxLevel);
 
 	AABB data;
 	BoxTree *parent = NULL;
 	BoxTree *left = NULL;
 	BoxTree *right = NULL;
+	int level = 0;
 };
 #endif

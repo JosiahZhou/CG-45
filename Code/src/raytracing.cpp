@@ -37,7 +37,7 @@ BoxTree initBoxTree();
 void initAccelerationStructure();
 
 std::vector<AABB> boxes;
-BoxTree tree = BoxTree(AABB());
+BoxTree tree = BoxTree(AABB(), 0);
 
 // std::map<std::string, unsigned int> materialIndex;
 
@@ -86,13 +86,13 @@ BoxTree initBoxTree()
 {
 	std::pair<Vec3Df, Vec3Df> minMax = getMinAndMaxVertex();
 	AABB aabb = AABB(minMax.first, minMax.second, true);
-	return BoxTree(aabb);
+	return BoxTree(aabb, 0);
 }
 
 void initAccelerationStructure()
 {
-	//tree.splitMiddle(4000);
-	tree.splitAvg(4000, true);
+	//tree.splitMiddle(250, 3);
+	tree.splitAvg(MyMesh.triangles.size()/4.0, true, 3);
 	showBoxes(&tree);
 	printTree(&tree, 0);
 }
@@ -1263,21 +1263,23 @@ void AABB::highlightBoxEdges()
 /**********************************************************************************************
 **Axis-Aligned BoundingBox Tree Class
 ***********************************************************************************************/
-BoxTree::BoxTree(const AABB data)
+BoxTree::BoxTree(const AABB data, int level)
 {
 	this->data = data;
 	this->left = NULL;
 	this->right = NULL;
+	this->level = level;
 }
 
-BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right)
+BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right, int level)
 {
 	this->data = data;
 	this->left = left;
 	this->right = right;
+	this->level = level;
 }
 
-void BoxTree::splitMiddle(int minTriangles)
+void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 {
 	// reduces the boxsize to 'fit' the object (i.e. reduce the size of the boundingbox to the minimum required)
 	if (data.triangles.size() > 0) {
@@ -1304,7 +1306,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		data = AABB(min, max, false);
 	}
 
-	if (data.triangles.size() < minTriangles)
+	if (data.triangles.size() < minTriangles || level > maxLevel)
 	{
 		return;
 	}
@@ -1324,7 +1326,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		//     `+------+
 		Vec3Df midPoint = (data.vertices_[3].p + data.vertices_[7].p) / 2.0f;
 		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
-		left = new BoxTree(leftNode); // Beware: Usage of "new"
+		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
 
 		//	+------+
 		//  |`.    |`.
@@ -1335,7 +1337,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		//     `+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[4].p) / 2.0f;
 		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
-		right = new BoxTree(rightNode); // Beware: Usage of "new"
+		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
 	}
 	else if (edgeY > edgeX && edgeY > edgeZ)
 	{
@@ -1348,7 +1350,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		//     `+------6
 		Vec3Df midPoint = (data.vertices_[6].p + data.vertices_[7].p) / 2.0f;
 		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
-		left = new BoxTree(leftNode); // Beware: Usage of "new"
+		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
 
 		//	2------+
 		//  |`.    |`.
@@ -1359,7 +1361,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		//     `+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[2].p) / 2.0f;
 		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
-		right = new BoxTree(rightNode); // Beware: Usage of "new"
+		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
 
 	}
 	else
@@ -1373,7 +1375,7 @@ void BoxTree::splitMiddle(int minTriangles)
 		//     `+------+
 		Vec3Df midPoint = (data.vertices_[5].p + data.vertices_[7].p) / 2.0f;
 		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
-		left = new BoxTree(leftNode); // Beware: Usage of "new"
+		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
 
 		//	+------+
 		//  |`.    |`.
@@ -1384,15 +1386,15 @@ void BoxTree::splitMiddle(int minTriangles)
 		//     1+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[1].p) / 2.0f;
 		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
-		right = new BoxTree(rightNode); // Beware: Usage of "new"
+		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
 
 	}
 
-	left->splitMiddle(minTriangles);
-	right->splitMiddle(minTriangles);
+	left->splitMiddle(minTriangles, maxLevel);
+	right->splitMiddle(minTriangles, maxLevel);
 }
 
-void BoxTree::splitAvg(int minTriangles, const bool full)
+void BoxTree::splitAvg(int minTriangles, const bool full, int maxLevel)
 {
 	// save min and max
 	Vec3Df oldMin = Vec3Df(data.minmax_.first[0], data.minmax_.first[1], data.minmax_.first[2]);
@@ -1429,7 +1431,7 @@ void BoxTree::splitAvg(int minTriangles, const bool full)
 		data = AABB(min, max, full);
 	}
 
-	if (data.triangles.size() < minTriangles)
+	if (data.triangles.size() < minTriangles || level > maxLevel)
 	{
 		return;
 	}
@@ -1467,12 +1469,12 @@ void BoxTree::splitAvg(int minTriangles, const bool full)
 	AABB leftNode = AABB(oldMin, newMax, full);
 	AABB rightNode = AABB(newMin, oldMax, !full);
 
-	left = new BoxTree(leftNode); // Beware: Usage of "new"
-	right = new BoxTree(rightNode); // Beware: Usage of "new"
+	left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
+	right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
 
 	left->parent = this;
 	right->parent = this;
 
-	left->splitAvg(minTriangles, full);
-	right->splitAvg(minTriangles, !full);
+	left->splitAvg(minTriangles, full, maxLevel);
+	right->splitAvg(minTriangles, !full, maxLevel);
 }
