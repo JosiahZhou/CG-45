@@ -783,6 +783,11 @@ Vec3Df calculateShading(const Vec3Df &vertexPosition, Vec3Df &normal, Material *
     // initially black
     Vec3Df calculatedColor(0, 0, 0);
     
+    // Add the ambient shading
+    if (ambient && material->has_Ka()) {
+        calculatedColor = calculatedColor + material->Ka();
+    }
+    
     // Calculate the shading for every light source.
     for (int i = 0; i < MyLightPositions.size(); i++) {
         
