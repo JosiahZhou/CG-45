@@ -42,6 +42,7 @@ BoxTree tree = BoxTree(AABB());
 // std::map<std::string, unsigned int> materialIndex;
 
 unsigned int maxRecursionLevel;
+unsigned int shadowCounter;
 
 // Some forward declarations needed because of recursive functions
 void ComputeDirectLight(Vec3Df pointOfIntersection, Vec3Df& directColor);
@@ -92,7 +93,7 @@ BoxTree initBoxTree()
 void initAccelerationStructure()
 {
 	//tree.splitMiddle(4000);
-	tree.splitAvg(4000, true);
+	tree.splitAvg(600, true);
 	showBoxes(&tree);
 	printTree(&tree, 0);
 }
@@ -141,7 +142,12 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 
 			if (intersect) {
 				if (isInShadow(foundIntersection, t)) {
-					return Vec3Df(0, 0, 0); // shadow == black
+					Vec3Df color = Vec3Df(1, 1, 1);
+					int light = MyLightPositions.size() - shadowCounter;
+					double weight = (double)shadowCounter / (double)MyLightPositions.size(); // percentage in shadow
+					color = (1.0 - weight) * color;
+					//std::cout << "[IsInShadow] : color: " << color << std::endl;
+					return color; // shadow == black
 				}
 				else {
 					// color and other stuff here as well...
@@ -194,9 +200,12 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 }
 
 bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
-	for (Vec3Df light : MyLightPositions) {
+	int counter = 0;
+	bool shadow = false;
+	int x = 0;
+	for (x = 0; x < MyLightPositions.size(); x++) {
 		Vec3Df origin = intersection;;
-		Vec3Df dest = light;
+		Vec3Df dest = MyLightPositions[x];
 		Triangle foundTriangle;
 		float minDist = INFINITY;
 		/*********************************************************/
@@ -222,14 +231,26 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 					if (rayIntersectionPointTriangle(ray, triangle, Triangle(), intersect, distanceRay)) {
 						if (distanceRay > 0) {
 							minDist = distanceRay;
-							return true;
+							counter = counter + 1;
+							//std::cout << "[IsInShadow] : counter: " << counter << std::endl;
+							shadow = true;
+
+							goto nextsource;
 						}
 					}
 				}
 			}
 		}
+        
+	nextsource:
+		float random;
+
+		/*if (hitSomething) {
+			return hitSomething;
+		}*/
 	}
-	return false;
+	shadowCounter = counter;
+	return true;
 }
 
 // returns whether the ray hit something or not
@@ -603,12 +624,12 @@ void yourDebugDraw()
 	//as an example: we draw the test ray, which is set by the keyboard function
 	glPushAttrib(GL_ALL_ATTRIB_BITS);
 	glDisable(GL_LIGHTING);
-	// glBegin(GL_LINES);
-	// glColor3f(0, 1, 1);
-	// glVertex3f(testRayOrigin[0], testRayOrigin[1], testRayOrigin[2]);
-	// glColor3f(1, 0, 0);
-	// glVertex3f(testRayDestination[0], testRayDestination[1], testRayDestination[2]);
-	// glEnd();
+	 glBegin(GL_LINES);
+	 glColor3f(0, 1, 1);
+	 glVertex3f(testRayOrigin[0], testRayOrigin[1], testRayOrigin[2]);
+	 glColor3f(1, 0, 0);
+	 glVertex3f(testRayDestination[0], testRayDestination[1], testRayDestination[2]);
+	 glEnd();
 	glPointSize(10);
 	glBegin(GL_POINTS);
 	glVertex3fv(MyLightPositions[0].pointer());
@@ -1433,7 +1454,7 @@ void BoxTree::splitAvg(int minTriangles, const bool full)
 
 	float edgeX = Vec3Df::squaredDistance(data.vertices_[4].p, data.vertices_[0].p);
 	float edgeY = Vec3Df::squaredDistance(data.vertices_[2].p, data.vertices_[0].p);
-	float edgeZ = Vec3Df::squaredDistance(data.vertices_[1].p, data.vertices_[0].p);
+	float edgeZ = Vec3Df::squaredDistance(data.vertices_[1].p, data.vertices_[0].p);	
 
 	Vec3Df avg = Vec3Df(0.0f, 0.0f, 0.0f);
 
