@@ -720,6 +720,21 @@ double intensityOfLight(const float &distance, const float &power, const float &
 	}
 }
 
+/**
+ * Method to calculate the diffuse light.
+ *
+ * @param vertexPos the selected position.
+ * @param normal The normal.
+ * @param material The material.
+ * @param lightPos Our lightposition.
+ * @return The diffuse light.
+ */
+Vec3Df diffuse(const Vec3Df &vertexPos, Vec3Df &normal, Material *material, Vec3Df lightPos) {
+    
+    Vec3Df vectorLight = lightPos - vertexPos;
+    return material->Kd() * std::max(0.0f, Vec3Df::dotProduct(normal, vectorLight));
+    
+}
 
 
 // https://stackoverflow.com/questions/13484943/print-a-binary-tree-in-a-pretty-way
