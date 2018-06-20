@@ -61,7 +61,7 @@ void init()
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
 	// MyMesh.loadMtl("test_scene_1.mtl", materialIndex);
-	MyMesh.loadMesh("test_scene_1.obj", true);
+	MyMesh.loadMesh("box.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -146,6 +146,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 				else {
 					// color and other stuff here as well...
 					return Vec3Df(1, 1, 1); // light == white
+                    
 				}
 			}
 			else
@@ -203,12 +204,10 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 		/*********************************************************/
 		Vec3Df direction = dest - origin;
 		origin = origin + 0.001f * direction;
-		float distance;
 		Ray ray;
 		ray.origin = origin;
 		ray.direction = direction;
 		ray.insideMaterial = false;
-		//bool hitSomething = Intersect(0, ray, intersection, intersectionTriangle, Triangle(), distance);
 
 		for (int b = 0; b < boxes.size(); b++) {
 			AABB box = boxes[b];
@@ -225,18 +224,14 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 							minDist = distanceRay;
 							return true;
 						}
-						// if (distanceRay < 0) pointOfIntersection = pointOfIntersection + 5*ray.direction;
-
 					}
 				}
 			}
 		}
-		/*if (hitSomething) {
-			return hitSomething;
-		}*/
 	}
 	return false;
 }
+
 // returns whether the ray hit something or not
 bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Triangle ignoreTriangle) {
 	// if (level > maxRecursionLevel) return false;
@@ -704,6 +699,8 @@ double intensityOfLight(const float &distance, const float &power, const float &
 	}
 }
 
+
+
 // https://stackoverflow.com/questions/13484943/print-a-binary-tree-in-a-pretty-way
 int rec[1000006];
 // Prints the BoxTree in directory-format
@@ -990,11 +987,11 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 			MyLightPositionPower[MyLightPositionsPointer] = 0;
 		}
 		break;
-	case 'r':
+	case 'o':
 		MyLightPositionRadius[MyLightPositionsPointer] += .01f;
 		setupMySphereLightPositions();
 		break;
-	case 'R':
+	case 'O':
 		MyLightPositionRadius[MyLightPositionsPointer] -= .01f;
 		if (MyLightPositionRadius[MyLightPositionsPointer] < 0) {
 			MyLightPositionRadius[MyLightPositionsPointer] = 0;
