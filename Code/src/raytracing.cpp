@@ -769,6 +769,37 @@ Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material *
 
 }
 
+/**
+ * Method to calculate the shading.
+ *
+ * @param ray the ray.
+ * @param vertexPos  the vertex position.
+ * @param normal the normal.
+ * @param material the material.
+ * @return The shading on impact.
+ */
+Vec3Df calculateShading(const Vec3Df &vertexPosition, Vec3Df &normal, Material *material) {
+    
+    // initially black
+    Vec3Df calculatedColor(0, 0, 0);
+    
+    // Calculate the shading for every light source.
+    for (int i = 0; i < MyLightPositions.size(); i++) {
+        
+        // Add the diffuse shading.
+        if (diffuse && material->has_Kd()) {
+            calculatedColor = calculatedColor + material->Tr() * diffuseFunction(vertexPosition, normal, material, MyLightPositions[i]);
+        }
+        
+        // Add the specular shading.
+        if (specular && material->has_Ks() && material->has_Ns()) {
+            calculatedColor = calculatedColor + material->Tr() * specularFunction(vertexPosition, normal, material, MyLightPositions[i]);
+        }
+    }
+    
+    return calculatedColor;
+}
+
 
 // https://stackoverflow.com/questions/13484943/print-a-binary-tree-in-a-pretty-way
 int rec[1000006];
