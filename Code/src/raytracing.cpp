@@ -730,8 +730,9 @@ double intensityOfLight(const float &distance, const float &power, const float &
  * @return The diffuse light.
  */
 Vec3Df diffuse(const Vec3Df &vertexPos, Vec3Df &normal, Material *material, Vec3Df lightPos) {
-    
-    Vec3Df vectorLight = lightPos - vertexPos;
+
+    Vec3Df vectorLight = (lightPos - vertexPos);
+    vectorLight.normalize();
     return material->Kd() * std::max(0.0f, Vec3Df::dotProduct(normal, vectorLight));
     
 }
