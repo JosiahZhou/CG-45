@@ -758,6 +758,7 @@ Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material *
     Vec3Df vectorLight = lightPosition - vertexPosition;
     vectorLight.normalize();
     
+    normal.normalize();
     Vec3Df reflection = vectorLight - 2 * (Vec3Df::dotProduct(normal, vectorLight)) * normal;
     reflection.normalize();
     
@@ -765,7 +766,7 @@ Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material *
     
     // take the power
     return material->Ks() * pow(dotProduct, material->Ns());
-    
+
 }
 
 
