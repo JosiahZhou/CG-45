@@ -21,6 +21,10 @@
 #include <stack>
 
 int light_speed_sphere = 12391;
+bool diffuse = true;
+bool specular = true;
+bool ambient = true;
+bool shading = true;
 
 //temporary variables
 //these are only used to illustrate
@@ -729,11 +733,38 @@ double intensityOfLight(const float &distance, const float &power, const float &
  * @param lightPos Our lightposition.
  * @return The diffuse light.
  */
-Vec3Df diffuse(const Vec3Df &vertexPos, Vec3Df &normal, Material *material, Vec3Df lightPos) {
+Vec3Df diffuseFunction(const Vec3Df &vertexPos, Vec3Df &normal, Material *material, Vec3Df lightPos) {
 
     Vec3Df vectorLight = (lightPos - vertexPos);
     vectorLight.normalize();
     return material->Kd() * std::max(0.0f, Vec3Df::dotProduct(normal, vectorLight));
+    
+}
+
+/**
+ * Method to calculate the specular light.
+ *
+ * @param vertexPosition the selected position.
+ * @param normal the normal.
+ * @param material the material.
+ * @param lightPosition the lightposition.
+ * @return The specular light.
+ */
+Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material *material, Vec3Df lightPosition) {
+    
+    Vec3Df vectorView = vertexPosition - MyCameraPosition;
+    vectorView.normalize();
+    
+    Vec3Df vectorLight = lightPosition - vertexPosition;
+    vectorLight.normalize();
+    
+    Vec3Df reflection = vectorLight - 2 * (Vec3Df::dotProduct(normal, vectorLight)) * normal;
+    reflection.normalize();
+    
+    float dotProduct = std::max(Vec3Df::dotProduct(vectorView, reflection), 0.0f);
+    
+    // take the power
+    return material->Ks() * pow(dotProduct, material->Ns());
     
 }
 
