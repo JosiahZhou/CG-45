@@ -91,7 +91,7 @@ BoxTree initBoxTree()
 
 void initAccelerationStructure()
 {
-	//tree.splitMiddle(250, 3);
+	//tree.splitMiddle(MyMesh.triangles.size()/4.0, 3);
 	tree.splitAvg(MyMesh.triangles.size()/4.0, true, 3);
 	showBoxes(&tree);
 	printTree(&tree, 0);
@@ -1211,7 +1211,16 @@ bool AABB::withinBoxFull(const Triangle t)
 void AABB::highlightBoxEdges()
 {
 	glBegin(GL_LINES);
-	glColor3f(0, 1, 0);
+	if (triangles.size() == 462) {
+		glColor3f(1, 0, 0);
+	}
+	else if (triangles.size() == 978) {
+		glColor3f(0, 0, 1);
+	}
+	else {
+		glColor3f(0, 1, 0);
+	}
+	
 
 	// 0------2
 	// |`.    |`.
