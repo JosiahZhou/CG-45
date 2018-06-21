@@ -85,14 +85,14 @@ void init()
 BoxTree initBoxTree()
 {
 	std::pair<Vec3Df, Vec3Df> minMax = getMinAndMaxVertex();
-	AABB aabb = AABB(minMax.first, minMax.second, true);
+	AABB aabb = AABB(minMax.first, minMax.second);
 	return BoxTree(aabb, 0);
 }
 
 void initAccelerationStructure()
 {
 	//tree.splitMiddle(MyMesh.triangles.size()/4.0, 3);
-	tree.splitAvg(MyMesh.triangles.size()/4.0, true, 3);
+	tree.splitAvg(MyMesh.triangles.size()/4.0, 3);
 	showBoxes(&tree);
 	printTree(&tree, 0);
 }
@@ -1055,7 +1055,7 @@ AABB::AABB()
 	triangles = std::vector<Triangle>();
 }
 
-AABB::AABB(const Vec3Df min, const Vec3Df max, const bool full)
+AABB::AABB(const Vec3Df min, const Vec3Df max)
 {
 	minmax_ = std::pair<Vec3Df, Vec3Df>(min, max);
 	vertices_ = std::vector<Vertex>();
@@ -1157,19 +1157,9 @@ AABB::AABB(const Vec3Df min, const Vec3Df max, const bool full)
 	for (int i = 0; i < MyMesh.triangles.size(); i++)
 	{
 		// WithinBox/WithinBoxFull: You Decide...
-		if (full)
+		if (withinBox(MyMesh.triangles[i]))
 		{
-			if (withinBoxFull(MyMesh.triangles[i]))
-			{
-				triangles.push_back(MyMesh.triangles[i]);
-			}
-		}
-		else
-		{
-			if (withinBox(MyMesh.triangles[i]))
-			{
-				triangles.push_back(MyMesh.triangles[i]);
-			}
+			triangles.push_back(MyMesh.triangles[i]);
 		}
 	}
 }
@@ -1312,7 +1302,7 @@ void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 			}
 		}
 
-		data = AABB(min, max, false);
+		data = AABB(min, max);
 	}
 
 	if (data.triangles.size() < minTriangles || level > maxLevel)
@@ -1334,7 +1324,7 @@ void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 		//   `. |   `. |
 		//     `+------+
 		Vec3Df midPoint = (data.vertices_[3].p + data.vertices_[7].p) / 2.0f;
-		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
 		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
 
 		//	+------+
@@ -1345,7 +1335,7 @@ void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 		//   `. |   `. |
 		//     `+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[4].p) / 2.0f;
-		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
 		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
 	}
 	else if (edgeY > edgeX && edgeY > edgeZ)
@@ -1358,7 +1348,7 @@ void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 		//   `. |   `. |
 		//     `+------6
 		Vec3Df midPoint = (data.vertices_[6].p + data.vertices_[7].p) / 2.0f;
-		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
 		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
 
 		//	2------+
@@ -1369,7 +1359,7 @@ void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 		//   `. |   `. |
 		//     `+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[2].p) / 2.0f;
-		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
 		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
 
 	}
@@ -1383,7 +1373,7 @@ void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 		//   `. |   `. |
 		//     `+------+
 		Vec3Df midPoint = (data.vertices_[5].p + data.vertices_[7].p) / 2.0f;
-		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
 		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
 
 		//	+------+
@@ -1394,7 +1384,7 @@ void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 		//   `X |   `. |
 		//     1+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[1].p) / 2.0f;
-		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
 		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
 
 	}
@@ -1403,7 +1393,7 @@ void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 	right->splitMiddle(minTriangles, maxLevel);
 }
 
-void BoxTree::splitAvg(int minTriangles, const bool full, int maxLevel)
+void BoxTree::splitAvg(int minTriangles, int maxLevel)
 {
 	// save min and max
 	Vec3Df oldMin = Vec3Df(data.minmax_.first[0], data.minmax_.first[1], data.minmax_.first[2]);
@@ -1412,33 +1402,7 @@ void BoxTree::splitAvg(int minTriangles, const bool full, int maxLevel)
 	Vec3Df newMin = Vec3Df(data.minmax_.first[0], data.minmax_.first[1], data.minmax_.first[2]);
 	Vec3Df newMax = Vec3Df(data.minmax_.second[0], data.minmax_.second[1], data.minmax_.second[2]);
 
-	// reduce empty space of bounding box
-	if (data.triangles.size() > 0)
-	{
-		Vec3Df min = MyMesh.vertices[data.triangles[0].v[0]].p;
-		Vec3Df max = MyMesh.vertices[data.triangles[0].v[0]].p;
-		for (int z = 0; z < data.triangles.size(); z++)
-		{
-			for (int y = 0; y < 3; y++)
-			{
-				for (int x = 0; x < 3; x++)
-				{
-					if (data.withinBoxFull(data.triangles[z]))
-					{
-						if (MyMesh.vertices[data.triangles[z].v[y]].p[x] > max[x])
-						{
-							max[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
-						}
-						if (MyMesh.vertices[data.triangles[z].v[y]].p[x] < min[x])
-						{
-							min[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
-						}
-					}
-				}
-			}
-		}
-		data = AABB(min, max, full);
-	}
+	data.trim();
 
 	if (data.triangles.size() < minTriangles || level > maxLevel)
 	{
@@ -1475,8 +1439,8 @@ void BoxTree::splitAvg(int minTriangles, const bool full, int maxLevel)
 	newMin[edge] = avg[edge];
 	newMax[edge] = avg[edge];
 
-	AABB leftNode = AABB(oldMin, newMax, full);
-	AABB rightNode = AABB(newMin, oldMax, !full);
+	AABB leftNode = AABB(oldMin, newMax);
+	AABB rightNode = AABB(newMin, oldMax);
 
 	left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
 	right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
@@ -1484,6 +1448,35 @@ void BoxTree::splitAvg(int minTriangles, const bool full, int maxLevel)
 	left->parent = this;
 	right->parent = this;
 
-	left->splitAvg(minTriangles, full, maxLevel);
-	right->splitAvg(minTriangles, !full, maxLevel);
+	left->splitAvg(minTriangles, maxLevel);
+	right->splitAvg(minTriangles, maxLevel);
+}
+
+// reduce empty space of bounding box
+void AABB::trim() {
+	if (triangles.size() > 0)
+	{
+		Vec3Df newMin = MyMesh.vertices[triangles[0].v[0]].p;
+		Vec3Df newMax = MyMesh.vertices[triangles[0].v[0]].p;
+		for (int z = 0; z < triangles.size(); z++)
+		{
+			for (int y = 0; y < 3; y++)
+			{
+				for (int x = 0; x < 3; x++)
+				{
+					if (withinBoxFull(triangles[z]))
+					{
+						if (MyMesh.vertices[triangles[z].v[y]].p[x] > newMax[x])
+						{
+							newMax[x] = MyMesh.vertices[triangles[z].v[y]].p[x];
+						}
+						if (MyMesh.vertices[triangles[z].v[y]].p[x] < newMin[x])
+						{
+							newMin[x] = MyMesh.vertices[triangles[z].v[y]].p[x];
+						}
+					}
+				}
+			}
+		}
+	}
 }

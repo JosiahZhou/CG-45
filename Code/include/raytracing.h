@@ -103,7 +103,7 @@ class AABB {
 public:
 	AABB();
 	//AABB(const Vec3Df min, const Vec3Df max);
-	AABB(const Vec3Df min, const Vec3Df max, const bool full);
+	AABB(const Vec3Df min, const Vec3Df max);
 
 	//Returns true if a triangle is partially inside the boundingbox
 	bool withinBox(const Triangle t);
@@ -113,6 +113,9 @@ public:
 
 	//highlights the box edges
 	void highlightBoxEdges();
+
+	//Trims the box to match the boundaries of the triangles
+	void trim();
 
 	// min and max value
 	std::pair<Vec3Df, Vec3Df> minmax_;
@@ -137,7 +140,7 @@ public:
 
 	// splits the box ("data") recursively into smaller parts, and adds them to the tree, until it the amount of triangles within the box is smaller than "minTriangles"
 	void splitMiddle(int minTriangles, int maxLevel);
-	void splitAvg(int minTriangles, const bool full, int maxLevel);
+	void splitAvg(int minTriangles, int maxLevel);
 
 	AABB data;
 	BoxTree *parent = NULL;
