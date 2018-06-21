@@ -28,8 +28,8 @@
 Vec3Df MyCameraPosition;
 
 //MyLightPositions stores all the light positions to use
-//for the ray tracing. Please notice, the light that is 
-//used for the real-time rendering is NOT one of these, 
+//for the ray tracing. Please notice, the light that is
+//used for the real-time rendering is NOT one of these,
 //but following the camera instead.
 std::vector<Vec3Df> MyLightPositions;
 std::vector<int> MyLightPositionAmount;
@@ -38,11 +38,11 @@ std::vector<int> MyLightPositionPower;
 int MyLightPositionsPointer = 0;
 std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 
-//Main mesh 
-Mesh MyMesh; 
+//Main mesh
+Mesh MyMesh;
 
-unsigned int WindowSize_X = 1080;  // resolution X
-unsigned int WindowSize_Y = 1080;  // resolution Y
+unsigned int WindowSize_X = 100;  // resolution X
+unsigned int WindowSize_Y = 100;  // resolution Y
 
 
 
@@ -79,7 +79,7 @@ int main(int argc, char** argv)
     // positioning and size of window
     glutInitWindowPosition(200, 100);
     glutInitWindowSize(WindowSize_X,WindowSize_Y);
-    glutCreateWindow(argv[0]);	
+    glutCreateWindow(argv[0]);
 
     //initialize viewpoint
     glMatrixMode(GL_MODELVIEW);
@@ -102,10 +102,10 @@ int main(int argc, char** argv)
     //clear color of the background is black.
 	glClearColor (0.0, 0.0, 0.0, 0.0);
 
-	
+
 	// Activate rendering modes
     //activate depth test
-	glEnable( GL_DEPTH_TEST ); 
+	glEnable( GL_DEPTH_TEST );
     //draw front-facing triangles filled
 	//and back-facing triangles as wires
     glPolygonMode(GL_FRONT,GL_FILL);
@@ -125,10 +125,10 @@ int main(int argc, char** argv)
 
 	init();
 
-    
+
 	//main loop for glut... this just runs your application
     glutMainLoop();
-        
+
     return 0;  // execution never reaches this point
 }
 
@@ -143,7 +143,7 @@ int main(int argc, char** argv)
 
 
 /**
- * OpenGL setup - functions do not need to be changed! 
+ * OpenGL setup - functions do not need to be changed!
  * you can SKIP AHEAD TO THE KEYBOARD FUNCTION
  */
 //what to do before drawing an image
@@ -152,8 +152,8 @@ int main(int argc, char** argv)
 	glPushAttrib(GL_ALL_ATTRIB_BITS);//store GL state
     // Clear everything
     glClear( GL_COLOR_BUFFER_BIT  | GL_DEPTH_BUFFER_BIT); // clear image
-    
-    glLoadIdentity();  
+
+    glLoadIdentity();
 
     tbVisuTransform(); // init mouse
 
@@ -186,7 +186,7 @@ void produceRay(int x_I, int y_I, Vec3Df * origin, Vec3Df * dest)
 		int y_new = viewport[3] - y_I;
 
 		double x, y, z;
-		
+
 		gluUnProject(x_I, y_new, 0, modelview, projection, viewport, &x, &y, &z);
 		origin->p[0]=float(x);
 		origin->p[1]=float(y);
@@ -249,11 +249,11 @@ void keyboard(unsigned char key, int x, int y)
 
 		float doneLines = 0.0f;
 		//openMP runs this for loop in parallel.
-		#pragma omp parallel for ordered schedule(dynamic)
+		// #pragma omp parallel for ordered schedule(dynamic)
 		for (int y=0; y<WindowSize_Y;++y) {
 			for (int x=0; x<WindowSize_X;++x)
 			{
-				//produce the rays for each pixel, by interpolating 
+				//produce the rays for each pixel, by interpolating
 				//the four rays of the frustum corners.
 				float xscale = 1.0f - float(x) / (WindowSize_X - 1);
 				float yscale = 1.0f - float(y) / (WindowSize_Y - 1);
@@ -264,14 +264,19 @@ void keyboard(unsigned char key, int x, int y)
 					(1 - yscale)*(xscale*dest01 + (1 - xscale)*dest11);
 
 				//launch raytracing for the given ray.
-				Vec3Df rgb = performRayTracing(origin, dest);
-				//store the result in an image 
+				Vec3Df dir = dest - origin;
+				dir.normalize();
+				Ray ray = {origin, dir, false};
+
+				Vec3Df rgb;
+				Trace(0, ray, rgb, Triangle());
+				//store the result in an image
 				result.setPixel(x, y, RGBValue(rgb[0], rgb[1], rgb[2]));
 			}
 			percentage = (double)y / (double)(WindowSize_Y-1) * 100;
 			auto end = std::chrono::system_clock::now();
 			std::chrono::duration<double> diff = end - start;
-			
+
 			printf("\rPercentage done: [%6.4f%%] \tElapsed time (seconds) : [%4.2f]", percentage, diff.count());
 
 
@@ -283,11 +288,10 @@ void keyboard(unsigned char key, int x, int y)
         exit(0);
     }
 
-	
+
 	//produce the ray for the current mouse position
 	Vec3Df testRayOrigin, testRayDestination;
 	produceRay(x, y, &testRayOrigin, &testRayDestination);
 
 	yourKeyboardFunc(key,x,y, testRayOrigin, testRayDestination);
 }
-

@@ -43,13 +43,6 @@ BoxTree tree = BoxTree(AABB());
 
 unsigned int maxRecursionLevel;
 
-// Some forward declarations needed because of recursive functions
-void ComputeDirectLight(Vec3Df pointOfIntersection, Vec3Df& directColor);
-bool ComputeReflectedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle triangleOfIntersection, Ray& reflectedRay);
-bool ComputeRefractedRay(Ray origRay, Intersection intersect, Ray& refractedRay);
-void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle);
-bool Intersect(unsigned int level, const Ray ray, Vec3Df& pointOfIntersection, Triangle& triangleOfIntersection, Triangle ignoreTriangle, float& distance);
-
 //use this function for any preprocessing of the mesh.
 void init()
 {
@@ -266,7 +259,7 @@ bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Trian
 }
 
 void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& color) {
-	Vec3Df directColor, reflectedColor, refractedColor;
+	Vec3Df directColor, reflectedColor, refractedColor, specularLuminance;
 	directColor = Vec3Df(0,0,0);
 	reflectedColor = Vec3Df(0,0,0);
 	refractedColor = Vec3Df(0,0,0);
@@ -279,9 +272,11 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	reflection = 0.5;
 	transmission = 0.5;
 
-	bool computeDirect, computeReflect, computeRefract;
-	computeDirect = computeReflect = computeRefract = false;
+	bool computeDirect, computeReflect, computeRefract, computeSpecular;
+	computeDirect = computeReflect = computeRefract = computeSpecular = false;
 	Vec3Df mirrorReflectance = Vec3Df(0,0,0);
+	Vec3Df glassRefractance = Vec3Df(0,0,0);
+	Vec3Df diffuseContribution = Vec3Df(1,1,1);
 
 	// determine which contributions need to be computed for which materials
 	switch (intersect.material.illum()) {
@@ -292,41 +287,51 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 		// highlights on (diffuse + specular highlights)
 		case 2:
 			computeDirect = true;
-			computeReflect = true;
+			computeSpecular = true;
 			break;
 		// pure mirror
 		case 3:
 			computeDirect = true;
 			computeReflect = true;
+			computeSpecular = true;
 			mirrorReflectance = intersect.material.Ka();
+			diffuseContribution = Vec3Df(1,1,1) - mirrorReflectance;
 			break;
 		// realistic glass (both reflection and refraction)
 		case 4:
 			computeReflect = true;
 			computeRefract = true;
+			computeSpecular = true;
 			break;
 		// general glossy material (reflection/refraction, ray trace on, fresnel off)
+		// TODO: look at partially opaque materials (frosted glass etc)
 		case 6:
 			computeReflect = true;
 			computeRefract = true;
+			computeSpecular = true;
+			diffuseContribution = Vec3Df(0,0,0);
+			mirrorReflectance = intersect.material.Ka();
+			glassRefractance = Vec3Df(1,1,1) - mirrorReflectance;
 			break;
 		// pure refractive material (no reflections)
 		case 9:
 			computeRefract = true;
+			computeSpecular = true;
+			diffuseContribution = Vec3Df(0,0,0);
 			break;
-		// by default enable all three, but give a warning in the terminal
+		// by default compute nothing and give a warning in the terminal
 		default:
-			computeDirect = true;
-			computeReflect = true;
-			computeRefract = true;
 			printf("Warning: unknown material type %d, please check...", intersect.material.illum());
 			break;
 	}
 
-	if (computeDirect) ComputeDirectLight(intersect.point, directColor);
+	if (computeDirect) ComputeDirectLight(intersect, directColor);
 
-	if (computeReflect && level + 1 <= maxRecursionLevel) {
-		if (ComputeReflectedRay(origRay, intersect.point, intersect.triangle, reflectedRay)) Trace(level + 1, reflectedRay, reflectedColor, intersect.triangle);
+	if ((computeReflect || computeSpecular) && level + 1 <= maxRecursionLevel) {
+		if (ComputeReflectedRay(origRay, intersect.point, intersect.triangle, reflectedRay)) {
+			if (computeReflect) Trace(level + 1, reflectedRay, reflectedColor, intersect.triangle);
+			if (computeSpecular) BounceLight(reflectedRay, specularLuminance, intersect.triangle);
+		}
 	}
 
 	if (computeRefract && level + 1 <= maxRecursionLevel) {
@@ -334,9 +339,16 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	}
 
 	// TODO: figure out proper mirrorReflectance/specular usage, both should be handled differently
-	color = (Vec3Df(1,1,1) - mirrorReflectance)*intersect.material.Kd()*directColor + mirrorReflectance*reflection*reflectedColor + intersect.material.Ks()*transmission*refractedColor;
+	color = diffuseContribution*intersect.material.Kd()*directColor + specularLuminance*intersect.material.Ks() + mirrorReflectance*reflectedColor + glassRefractance*refractedColor;
+
+	std::cout << "Got color " << color << " from level " << level << std::endl;
 
 	return;
+}
+
+void BounceLight(Ray ray, Vec3Df& luminance, Triangle ignoreTriangle) {
+	// TODO
+	luminance = Vec3Df(0,0,0);
 }
 
 void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) {
@@ -363,9 +375,9 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 	return;
 }
 
-void ComputeDirectLight(Vec3Df pointOfIntersection, Vec3Df& directColor) {
+void ComputeDirectLight(Intersection intersect, Vec3Df& directColor) {
 	// if (isInShadow(pointOfIntersection, Triangle())) {
-	// 	directColor = Vec3Df(0, 0, 0); // Hard shadow, item is in the shadow thus color is black
+	 	directColor = Vec3Df(1,1,1); // Hard shadow, item is in the shadow thus color is black
 	// }
 
 	/*

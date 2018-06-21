@@ -66,6 +66,14 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 bool rayIntersectionPointTriangle(Ray r, Triangle triangle, Triangle ignoreTriangle, Vec3Df& pointOfIntersection, float& distanceLightToIntersection);
 bool rayIntersectionPointBox(Ray r, AABB box, Vec3Df& pin, Vec3Df& pout);
 
+// Functions for recursive raytracing of reflection and refraction
+void ComputeDirectLight(Intersection intersect, Vec3Df& directColor);
+bool ComputeReflectedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle triangleOfIntersection, Ray& reflectedRay);
+bool ComputeRefractedRay(Ray origRay, Intersection intersect, Ray& refractedRay);
+void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle);
+void BounceLight(Ray ray, Vec3Df& luminance, Triangle ignoreTriangle);
+bool Intersect(unsigned int level, const Ray ray, Vec3Df& pointOfIntersection, Triangle& triangleOfIntersection, Triangle ignoreTriangle, float& distance);
+
 // Prints the BoxTree in directory-format
 void printTree(struct BoxTree* curr, int depth);
 
