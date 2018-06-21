@@ -28,8 +28,9 @@ int light_speed_sphere = 12391;
 Vec3Df testRayOrigin;
 Vec3Df testRayDestination;
 
-Vec3Df recurseTestRayOrigins[20];
-Vec3Df recurseTestRayDestinations[20];
+Vec3Df recurseTestRayOrigins[50];
+Vec3Df recurseTestRayDestinations[50];
+bool drawRecurseRays;
 
 unsigned int recurseTestRayCount;
 // define function before implementation
@@ -42,6 +43,15 @@ BoxTree tree = BoxTree(AABB());
 // std::map<std::string, unsigned int> materialIndex;
 
 unsigned int maxRecursionLevel;
+
+void resetRecurseTestRays() {
+	for (int i = 0; i < 50; i++) {
+		recurseTestRayOrigins[i] = Vec3Df(0, 0, 0);
+		recurseTestRayDestinations[i] = Vec3Df(0, 0, 0);
+	}
+
+	recurseTestRayCount = 0;
+}
 
 //use this function for any preprocessing of the mesh.
 void init()
@@ -66,13 +76,11 @@ void init()
 	//MyLightPositions.push_back(MyCameraPosition);
 	createLightPointer();
 
-	maxRecursionLevel = 3;
+	maxRecursionLevel = 5;
 	recurseTestRayCount = 0;
 
-	for (int i = 0; i < 20; i++) {
-		recurseTestRayOrigins[i] = Vec3Df(0, 0, 0);
-		recurseTestRayDestinations[i] = Vec3Df(0, 0, 0);
-	}
+	resetRecurseTestRays();
+	drawRecurseRays = false;
 }
 
 BoxTree initBoxTree()
@@ -99,7 +107,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 	Vec3Df foundIntersection;
 	Triangle t;
 	bool intersect;
-	Ray r = { origin, direction, false };
+	Ray r = { origin, direction};
 
 	Vec3Df pin, pout;
 	if (rayIntersectionPointBox(r, tree.data, pin, pout))
@@ -158,7 +166,7 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 	Vec3Df direction = dest - origin;
 	float minDist = INFINITY;
 	Vec3Df foundIntersection;
-	Ray r = { origin, direction, false };
+	Ray r = { origin, direction};
 
 	for (int b = 0; b < boxes.size(); b++)
 	{
@@ -200,7 +208,6 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 		Ray ray;
 		ray.origin = origin;
 		ray.direction = direction;
-		ray.insideMaterial = false;
 		//bool hitSomething = Intersect(0, ray, intersection, intersectionTriangle, Triangle(), distance);
 
 		for (int b = 0; b < boxes.size(); b++) {
@@ -249,8 +256,12 @@ bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Trian
 				intersect.triangle = triangle;
 				intersect.distance = distance;
 				intersect.material = MyMesh.materials[MyMesh.triangleMaterials[i]];
+
+				Vec3Df n = calculateSurfaceNormal(triangle);
+				n.normalize();
+
+				intersect.schlickCosTheta = fabs(Vec3Df::dotProduct(n, ray.direction));
 			}
-			// if (distanceRay < 0) pointOfIntersection = pointOfIntersection + 5*ray.direction;
 		}
 	}
 
@@ -265,12 +276,6 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	refractedColor = Vec3Df(0,0,0);
 
 	Ray reflectedRay, refractedRay;
-	float reflection, transmission;
-
-	// temporary reflection and transmission values of 0.5
-	// TODO: calculate correct values according to material and angle
-	reflection = 0.5;
-	transmission = 0.5;
 
 	bool computeDirect, computeReflect, computeRefract, computeSpecular;
 	computeDirect = computeReflect = computeRefract = computeSpecular = false;
@@ -295,25 +300,36 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 			computeReflect = true;
 			computeSpecular = true;
 			// TODO: tune values
-			mirrorReflectance = 0.6*intersect.material.Ka();
+			mirrorReflectance = intersect.material.Ka();
 			diffuseContribution = Vec3Df(1,1,1) - mirrorReflectance;
 			break;
-		// realistic glass (both reflection and refraction)
-		case 4:
-			computeReflect = true;
-			computeRefract = true;
-			computeSpecular = true;
-			break;
+		// // realistic glass (both reflection and refraction)
+		// case 4:
+		// 	computeReflect = true;
+		// 	computeRefract = true;
+		// 	computeSpecular = true;
+		// 	break;
 		// general glossy material (reflection/refraction, ray trace on, fresnel off)
 		// TODO: look at partially opaque materials (frosted glass etc)
 		case 6:
-			computeReflect = true;
-			computeRefract = true;
-			computeSpecular = true;
-			diffuseContribution = Vec3Df(0,0,0);
-			mirrorReflectance = intersect.material.Ka();
-			glassRefractance = Vec3Df(1,1,1) - mirrorReflectance;
-			break;
+			{
+				computeReflect = true;
+				computeRefract = true;
+				computeSpecular = true;
+				diffuseContribution = Vec3Df(0,0,0);
+				mirrorReflectance = intersect.material.Ka();
+
+				float R0 = (intersect.material.Ni() - 1.0f) / (intersect.material.Ni() + 1.0f);
+				R0 *= R0;
+				float sc = (1 - intersect.schlickCosTheta);
+				float schlickReflectance = R0 + (1 - R0)*sc*sc*sc*sc*sc;
+
+				glassRefractance = Vec3Df(1,1,1) - mirrorReflectance;
+
+				mirrorReflectance += glassRefractance*schlickReflectance;
+				glassRefractance *= (1 - schlickReflectance);
+				break;
+			}
 		// pure refractive material (no reflections)
 		case 9:
 			computeRefract = true;
@@ -342,7 +358,7 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	// TODO: figure out proper mirrorReflectance/specular usage, both should be handled differently
 	color = diffuseContribution*intersect.material.Kd()*directColor + specularLuminance*intersect.material.Ks() + mirrorReflectance*reflectedColor + glassRefractance*refractedColor;
 
-	//std::cout << "Got color " << color << " from level " << level << std::endl;
+	if (drawRecurseRays && level == 0) std::cout << "Got color " << color << " from level " << level << std::endl;
 
 	return;
 }
@@ -362,11 +378,13 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 			intersect.point = ray.origin + 5*newRayDir;
 		}
 
-		// recurseTestRayOrigins[recurseTestRayCount] = ray.origin;
-		// recurseTestRayDestinations[recurseTestRayCount] = intersect.point;
-		// recurseTestRayCount++;
+		if (drawRecurseRays) {
+			recurseTestRayOrigins[recurseTestRayCount] = ray.origin;
+			recurseTestRayDestinations[recurseTestRayCount] = intersect.point;
+			recurseTestRayCount++;
 
-		//std::cout << "  Traced a ray on level " << level << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << intersect.distance << std::endl;
+			std::cout << "  Traced a ray on level " << level << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << intersect.distance << std::endl;
+		}
 
 		if (intersect.distance >= 0) Shade(level, ray, intersect, color);
 	} else {
@@ -396,7 +414,6 @@ bool ComputeReflectedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle trian
 	// calculate reflected direction vector
 	reflectedRay.direction = origRay.direction - 2*n*(Vec3Df::dotProduct(origRay.direction, n));
 	reflectedRay.direction.normalize();
-	reflectedRay.insideMaterial = origRay.insideMaterial;
 
 	return true;
 }
@@ -430,8 +447,6 @@ bool ComputeRefractedRay(Ray origRay, Intersection intersect, Ray& refractedRay)
 
 	// check if sqrt returned something negative
 	if (std::isnan(refractedRay.direction.p[0]) || std::isnan(refractedRay.direction.p[1]) || std::isnan(refractedRay.direction.p[2])) return false;
-
-	refractedRay.insideMaterial = !(origRay.insideMaterial);
 
 	return true;
 }
@@ -904,7 +919,7 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 			//				{
 			//					std::cout << pointOfIntersection << std::endl;
 			//				}
-			Ray r = { rayOrigin, normRayDirection, false };
+			Ray r = { rayOrigin, normRayDirection};
 
 			if (rayIntersectionPointTriangle(r, triangle, Triangle(), pointOfIntersection, distanceRay))
 			{
@@ -942,7 +957,6 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		Ray r;
 		r.origin = rayOrigin;
 		r.direction = rayDestination - rayOrigin;
-		r.insideMaterial = false;
 
 		// Splitting the tree
 		//tree.splitMiddle(4000);
@@ -969,7 +983,6 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		Ray r;
 		r.origin = rayOrigin;
 		r.direction = rayDestination - rayOrigin;
-		r.insideMaterial = false;
 
 		// Drawing the boxes
 		//showBoxes(&tree);
@@ -1031,7 +1044,9 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		break;
 	case 'q':
 	{
-		recurseTestRayCount = 0;
+		drawRecurseRays = true;
+
+		resetRecurseTestRays();
 
 		Ray recurseTestRay;
 
@@ -1039,13 +1054,14 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 
 		recurseTestRay.origin = rayOrigin;
 		recurseTestRay.direction = normRayDirection;
-		recurseTestRay.insideMaterial = false;
 
 		std::cout << "Starting recursive raytrace..." << std::endl;
 
 		Trace(0, recurseTestRay, resultColor, Triangle());
 
 		std::cout << "Recursive ray trace done." << std::endl;
+
+		drawRecurseRays = false;
 	}
 	break;
 	default:

@@ -41,8 +41,8 @@ std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 //Main mesh
 Mesh MyMesh;
 
-unsigned int WindowSize_X = 900;  // resolution X
-unsigned int WindowSize_Y = 900;  // resolution Y
+unsigned int WindowSize_X = 600;  // resolution X
+unsigned int WindowSize_Y = 600;  // resolution Y
 
 
 
@@ -266,7 +266,7 @@ void keyboard(unsigned char key, int x, int y)
 				//launch raytracing for the given ray.
 				Vec3Df dir = dest - origin;
 				dir.normalize();
-				Ray ray = { origin, dir, false };
+				Ray ray = { origin, dir };
 
 				Vec3Df rgb = Vec3Df(0, 0, 0);
 				Trace(0, ray, rgb, Triangle());

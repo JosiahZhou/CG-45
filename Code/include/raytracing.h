@@ -27,7 +27,6 @@ extern void createLightPointer();
 struct Ray {
 	Vec3Df origin;
 	Vec3Df direction;
-	bool insideMaterial;
 };
 
 struct Intersection {
@@ -35,6 +34,7 @@ struct Intersection {
 	Triangle triangle;
 	Material material;
 	float distance;
+	float schlickCosTheta;
 };
 
 //use this function for any preprocessing of the mesh.
