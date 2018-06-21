@@ -66,7 +66,7 @@ void init()
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
 	// MyMesh.loadMtl("test_scene_1.mtl", materialIndex);
-	MyMesh.loadMesh("box.obj", true);
+	MyMesh.loadMesh("circle2.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
