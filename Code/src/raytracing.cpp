@@ -1281,29 +1281,7 @@ BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right, int level)
 void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 {
 	// reduces the boxsize to 'fit' the object (i.e. reduce the size of the boundingbox to the minimum required)
-	if (data.triangles.size() > 0) {
-		Vec3Df min = MyMesh.vertices[data.triangles[0].v[0]].p;
-		Vec3Df max = MyMesh.vertices[data.triangles[0].v[0]].p;
-		for (int z = 0; z < data.triangles.size(); z++)
-		{
-			for (int y = 0; y < 3; y++)
-			{
-				for (int x = 0; x < 3; x++)
-				{
-					if (MyMesh.vertices[data.triangles[z].v[y]].p[x] > max[x])
-					{
-						max[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
-					}
-					if (MyMesh.vertices[data.triangles[z].v[y]].p[x] < min[x])
-					{
-						min[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
-					}
-				}
-			}
-		}
-
-		data = AABB(min, max);
-	}
+	data.trim();
 
 	if (data.triangles.size() < minTriangles || level > maxLevel)
 	{
