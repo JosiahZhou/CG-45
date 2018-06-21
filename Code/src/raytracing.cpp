@@ -1366,6 +1366,10 @@ void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 
 void BoxTree::splitAvg(int minTriangles, int maxLevel)
 {
+	if (data.triangles.size() > 0) {
+		data = data.trim();
+	}
+	
 	// save min and max
 	Vec3Df oldMin = Vec3Df(data.minmax_.first[0], data.minmax_.first[1], data.minmax_.first[2]);
 	Vec3Df oldMax = Vec3Df(data.minmax_.second[0], data.minmax_.second[1], data.minmax_.second[2]);
@@ -1373,7 +1377,7 @@ void BoxTree::splitAvg(int minTriangles, int maxLevel)
 	Vec3Df newMin = Vec3Df(data.minmax_.first[0], data.minmax_.first[1], data.minmax_.first[2]);
 	Vec3Df newMax = Vec3Df(data.minmax_.second[0], data.minmax_.second[1], data.minmax_.second[2]);
 
-	data.trim();
+	
 
 	if (data.triangles.size() < minTriangles || level > maxLevel)
 	{
@@ -1424,30 +1428,28 @@ void BoxTree::splitAvg(int minTriangles, int maxLevel)
 }
 
 // reduce empty space of bounding box
-void AABB::trim() {
-	if (triangles.size() > 0)
+AABB AABB::trim() {
+	Vec3Df newMin = MyMesh.vertices[triangles[0].v[0]].p;
+	Vec3Df newMax = MyMesh.vertices[triangles[0].v[0]].p;
+	for (int z = 0; z < triangles.size(); z++)
 	{
-		Vec3Df newMin = MyMesh.vertices[triangles[0].v[0]].p;
-		Vec3Df newMax = MyMesh.vertices[triangles[0].v[0]].p;
-		for (int z = 0; z < triangles.size(); z++)
+		for (int y = 0; y < 3; y++)
 		{
-			for (int y = 0; y < 3; y++)
+			for (int x = 0; x < 3; x++)
 			{
-				for (int x = 0; x < 3; x++)
+				if (withinBoxFull(triangles[z]))
 				{
-					if (withinBoxFull(triangles[z]))
+					if (MyMesh.vertices[triangles[z].v[y]].p[x] > newMax[x])
 					{
-						if (MyMesh.vertices[triangles[z].v[y]].p[x] > newMax[x])
-						{
-							newMax[x] = MyMesh.vertices[triangles[z].v[y]].p[x];
-						}
-						if (MyMesh.vertices[triangles[z].v[y]].p[x] < newMin[x])
-						{
-							newMin[x] = MyMesh.vertices[triangles[z].v[y]].p[x];
-						}
+						newMax[x] = MyMesh.vertices[triangles[z].v[y]].p[x];
+					}
+					if (MyMesh.vertices[triangles[z].v[y]].p[x] < newMin[x])
+					{
+						newMin[x] = MyMesh.vertices[triangles[z].v[y]].p[x];
 					}
 				}
 			}
 		}
 	}
+	return AABB(newMin, newMax);
 }

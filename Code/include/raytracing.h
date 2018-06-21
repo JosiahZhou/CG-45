@@ -115,7 +115,7 @@ public:
 	void highlightBoxEdges();
 
 	//Trims the box to match the boundaries of the triangles
-	void trim();
+	AABB trim();
 
 	// min and max value
 	std::pair<Vec3Df, Vec3Df> minmax_;
