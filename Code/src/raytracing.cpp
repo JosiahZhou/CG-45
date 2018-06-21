@@ -75,7 +75,7 @@ void init()
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
 	//here, we set it to the current location of the camera
-	//MyLightPositions.push_back(MyCameraPosition);
+	MyLightPositions.push_back(MyCameraPosition);
     createLightPointer();
 
 	maxRecursionLevel = 2;
@@ -222,25 +222,23 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 		ray.direction = direction;
 		ray.insideMaterial = false;
 
-		for (int b = 0; b < boxes.size(); b++) {
-			AABB box = boxes[b];
-			Vec3Df pin, pout;
-			// then trace the ray down to the right triangle
-			if (rayIntersectionPointBox(ray, box, pin, pout)) {
-				for (int i = 0; i < box.triangles.size(); i++) {
-					Vec3Df intersect;
-					float distanceRay;
-					Triangle triangle = box.triangles[i];
-					// if an intersection gets found, put the resulting point and triangle in the result vars
-					if (rayIntersectionPointTriangle(ray, triangle, Triangle(), intersect, distanceRay)) {
-						if (distanceRay > 0) {
-							minDist = distanceRay;
-							counter = counter + 1;
-							//std::cout << "[IsInShadow] : counter: " << counter << std::endl;
-							shadow = true;
-
-							goto nextsource;
-						}
+		Vec3Df pin, pout;
+		if (rayIntersectionPointBox(ray, tree.data, pin, pout))
+		{
+			AABB box = tree.data;
+			for (int i = 0; i < box.triangles.size(); i++) {
+				Vec3Df intersect;
+				float distanceRay;
+				Triangle triangle = box.triangles[i];
+				// if an intersection gets found, put the resulting point and triangle in the result vars
+				if (rayIntersectionPointTriangle(ray, triangle, Triangle(), intersect, distanceRay)) {
+					//intersectBool = true;
+					if (distanceRay > 0) {
+						minDist = distanceRay;
+						counter = counter + 1;
+						//std::cout << "[IsInShadow] : counter: " << counter << std::endl;
+						shadow = true;
+						goto nextsource;
 					}
 				}
 			}
