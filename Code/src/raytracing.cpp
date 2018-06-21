@@ -66,7 +66,7 @@ void init()
 	//MyLightPositions.push_back(MyCameraPosition);
 	createLightPointer();
 
-	maxRecursionLevel = 2;
+	maxRecursionLevel = 3;
 	recurseTestRayCount = 0;
 
 	for (int i = 0; i < 20; i++) {
@@ -294,7 +294,8 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 			computeDirect = true;
 			computeReflect = true;
 			computeSpecular = true;
-			mirrorReflectance = intersect.material.Ka();
+			// TODO: tune values
+			mirrorReflectance = 0.6*intersect.material.Ka();
 			diffuseContribution = Vec3Df(1,1,1) - mirrorReflectance;
 			break;
 		// realistic glass (both reflection and refraction)
@@ -361,9 +362,9 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 			intersect.point = ray.origin + 5*newRayDir;
 		}
 
-		recurseTestRayOrigins[recurseTestRayCount] = ray.origin;
-		recurseTestRayDestinations[recurseTestRayCount] = intersect.point;
-		recurseTestRayCount++;
+		// recurseTestRayOrigins[recurseTestRayCount] = ray.origin;
+		// recurseTestRayDestinations[recurseTestRayCount] = intersect.point;
+		// recurseTestRayCount++;
 
 		//std::cout << "  Traced a ray on level " << level << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << intersect.distance << std::endl;
 

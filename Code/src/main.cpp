@@ -41,8 +41,8 @@ std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 //Main mesh
 Mesh MyMesh;
 
-unsigned int WindowSize_X = 100;  // resolution X
-unsigned int WindowSize_Y = 100;  // resolution Y
+unsigned int WindowSize_X = 900;  // resolution X
+unsigned int WindowSize_Y = 900;  // resolution Y
 
 
 
@@ -249,7 +249,7 @@ void keyboard(unsigned char key, int x, int y)
 
 		float doneLines = 0.0f;
 		//openMP runs this for loop in parallel.
-		// #pragma omp parallel for ordered schedule(dynamic)
+		#pragma omp parallel for ordered schedule(dynamic)
 		for (int y = 0; y < WindowSize_Y; ++y) {
 			for (int x = 0; x < WindowSize_X; ++x)
 			{
