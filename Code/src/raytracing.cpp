@@ -1274,7 +1274,9 @@ BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right, int level)
 void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 {
 	// reduces the boxsize to 'fit' the object (i.e. reduce the size of the boundingbox to the minimum required)
-	data.trim();
+	if (data.triangles.size() > 0) {
+		data = data.trim();
+	}
 
 	if (data.triangles.size() < minTriangles || level > maxLevel)
 	{
