@@ -21,6 +21,10 @@
 #include <stack>
 
 int light_speed_sphere = 12391;
+bool diffuse = true;
+bool specular = true;
+bool ambient = true;
+bool shading = true;
 
 //temporary variables
 //these are only used to illustrate
@@ -38,11 +42,12 @@ BoxTree initBoxTree();
 void initAccelerationStructure();
 
 std::vector<AABB> boxes;
-BoxTree tree = BoxTree(AABB());
+BoxTree tree = BoxTree(AABB(), 0);
 
 // std::map<std::string, unsigned int> materialIndex;
 
 unsigned int maxRecursionLevel;
+unsigned int shadowCounter;
 
 void resetRecurseTestRays() {
 	for (int i = 0; i < 50; i++) {
@@ -63,7 +68,6 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	// MyMesh.loadMtl("test_scene_1.mtl", materialIndex);
 	MyMesh.loadMesh("test_scene_1.obj", true);
 	MyMesh.computeVertexNormals();
 
@@ -73,8 +77,7 @@ void init()
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
 	//here, we set it to the current location of the camera
-	//MyLightPositions.push_back(MyCameraPosition);
-	createLightPointer();
+	MyLightPositions.push_back(MyCameraPosition);
 
 	maxRecursionLevel = 5;
 	recurseTestRayCount = 0;
@@ -86,14 +89,14 @@ void init()
 BoxTree initBoxTree()
 {
 	std::pair<Vec3Df, Vec3Df> minMax = getMinAndMaxVertex();
-	AABB aabb = AABB(minMax.first, minMax.second, true);
-	return BoxTree(aabb);
+	AABB aabb = AABB(minMax.first, minMax.second);
+	return BoxTree(aabb, 0);
 }
 
 void initAccelerationStructure()
 {
-	//tree.splitMiddle(4000);
-	tree.splitAvg(4000, true);
+	//tree.splitMiddle(MyMesh.triangles.size()/4.0, 3);
+	tree.splitAvg(MyMesh.triangles.size()/4.0, 3);
 	showBoxes(&tree);
 	printTree(&tree, 0);
 }
@@ -142,11 +145,17 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 
 			if (intersect) {
 				if (isInShadow(foundIntersection, t)) {
-					return Vec3Df(0, 0, 0); // shadow == black
+					Vec3Df color = Vec3Df(1, 1, 1);
+					int light = MyLightPositions.size() - shadowCounter;
+					double weight = (double)shadowCounter / (double)MyLightPositions.size(); // percentage in shadow
+					color = (1.0 - weight) * color;
+					//std::cout << "[IsInShadow] : color: " << color << std::endl;
+					return color; // shadow == black
 				}
 				else {
 					// color and other stuff here as well...
 					return Vec3Df(1, 1, 1); // light == white
+
 				}
 			}
 			else
@@ -194,9 +203,12 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 }
 
 bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
-	for (Vec3Df light : MyLightPositions) {
+	int counter = 0;
+	bool shadow = false;
+	int x = 0;
+	for (x = 0; x < MyLightPositions.size(); x++) {
 		Vec3Df origin = intersection;;
-		Vec3Df dest = light;
+		Vec3Df dest = MyLightPositions[x];
 		Triangle foundTriangle;
 		float minDist = INFINITY;
 		/*********************************************************/
@@ -204,39 +216,43 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 		/*********************************************************/
 		Vec3Df direction = dest - origin;
 		origin = origin + 0.001f * direction;
-		float distance;
 		Ray ray;
 		ray.origin = origin;
 		ray.direction = direction;
-		//bool hitSomething = Intersect(0, ray, intersection, intersectionTriangle, Triangle(), distance);
 
-		for (int b = 0; b < boxes.size(); b++) {
-			AABB box = boxes[b];
-			Vec3Df pin, pout;
-			// then trace the ray down to the right triangle
-			if (rayIntersectionPointBox(ray, box, pin, pout)) {
-				for (int i = 0; i < box.triangles.size(); i++) {
-					Vec3Df intersect;
-					float distanceRay;
-					Triangle triangle = box.triangles[i];
-					// if an intersection gets found, put the resulting point and triangle in the result vars
-					if (rayIntersectionPointTriangle(ray, triangle, Triangle(), intersect, distanceRay)) {
-						if (distanceRay > 0) {
-							minDist = distanceRay;
-							return true;
-						}
-						// if (distanceRay < 0) pointOfIntersection = pointOfIntersection + 5*ray.direction;
-
+		Vec3Df pin, pout;
+		if (rayIntersectionPointBox(ray, tree.data, pin, pout))
+		{
+			AABB box = tree.data;
+			for (int i = 0; i < box.triangles.size(); i++) {
+				Vec3Df intersect;
+				float distanceRay;
+				Triangle triangle = box.triangles[i];
+				// if an intersection gets found, put the resulting point and triangle in the result vars
+				if (rayIntersectionPointTriangle(ray, triangle, Triangle(), intersect, distanceRay)) {
+					//intersectBool = true;
+					if (distanceRay > 0) {
+						minDist = distanceRay;
+						counter = counter + 1;
+						//std::cout << "[IsInShadow] : counter: " << counter << std::endl;
+						shadow = true;
+						goto nextsource;
 					}
 				}
 			}
 		}
+
+	nextsource:
+		float random;
+
 		/*if (hitSomething) {
 			return hitSomething;
 		}*/
 	}
-	return false;
+	shadowCounter = counter;
+	return shadow;
 }
+
 // returns whether the ray hit something or not
 bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Triangle ignoreTriangle) {
 	// if (level > maxRecursionLevel) return false;
@@ -675,24 +691,21 @@ void setupMySphereLightPositions() {
     // Clear old light positions of the sphere.
     MySphereLightPositions.clear();
 
-    // Loop through all the light centers.
-    for (int i = 0; i < MyLightPositions.size(); i++) {
-
         // We use a seed so that every scene will be the same for all lights,
         // even though we are using random points.
         std::mt19937 seed(light_speed_sphere);
         std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
 
         // Retrieve the values of the current light.
-        Vec3Df lightPosition = MyLightPositions[i];
-        float lightSphereWidth = MyLightPositionRadius[i];
-        int lightSphereAmount = MyLightPositionAmount[i];
+        Vec3Df lightPosition = MyLightPositions[MyLightPositions.size()-1];
+        float lightSphereWidth = MyLightPositionRadius[MyLightPositionRadius.size()-1];
+        int lightSphereAmount = MyLightPositionAmount[MyLightPositionAmount.size()-1];
 
         // Create the list of points.
         std::vector<Vec3Df> currentLightSphere;
 
         // We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
-        if (MyLightPositionAmount[i] > 1 && MyLightPositionRadius[i] > 0) {
+        if (MyLightPositionAmount[MyLightPositionAmount.size()-1] > 1 && MyLightPositionRadius[MyLightPositionRadius.size()-1] > 0) {
 
             // Calculate position for every surface light.
             for (int i = 0; i < lightSphereAmount; i++) {
@@ -702,16 +715,14 @@ void setupMySphereLightPositions() {
                 double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
                 double z = lightPosition[2] + cos(phi) * lightSphereWidth;
                 Vec3Df offset = Vec3Df(x, y, z);
-                currentLightSphere.push_back(offset);
+                MyLightPositions.push_back(offset);
             }
         } else {
             // We just add the normal light position.
-            currentLightSphere.push_back(lightPosition);
+            MyLightPositions.push_back(lightPosition);
         }
-
         // We add list of points around the sphere into the list.
         MySphereLightPositions.push_back(currentLightSphere);
-    }
 }
 
 /**
@@ -731,6 +742,88 @@ double intensityOfLight(const float &distance, const float &power, const float &
 		return minimum;
 	}
 }
+
+/**
+ * Method to calculate the diffuse light.
+ *
+ * @param vertexPos the selected position.
+ * @param normal The normal.
+ * @param material The material.
+ * @param lightPos Our lightposition.
+ * @return The diffuse light.
+ */
+Vec3Df diffuseFunction(const Vec3Df &vertexPos, Vec3Df &normal, Material *material, Vec3Df lightPos) {
+
+    Vec3Df vectorLight = (lightPos - vertexPos);
+    vectorLight.normalize();
+    return material->Kd() * std::max(0.0f, Vec3Df::dotProduct(normal, vectorLight));
+
+}
+
+/**
+ * Method to calculate the specular light.
+ *
+ * @param vertexPosition the selected position.
+ * @param normal the normal.
+ * @param material the material.
+ * @param lightPosition the lightposition.
+ * @return The specular light.
+ */
+Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material *material, Vec3Df lightPosition) {
+
+    Vec3Df vectorView = vertexPosition - MyCameraPosition;
+    vectorView.normalize();
+
+    Vec3Df vectorLight = lightPosition - vertexPosition;
+    vectorLight.normalize();
+
+    normal.normalize();
+    Vec3Df reflection = vectorLight - 2 * (Vec3Df::dotProduct(normal, vectorLight)) * normal;
+    reflection.normalize();
+
+    float dotProduct = std::max(Vec3Df::dotProduct(vectorView, reflection), 0.0f);
+
+    // take the power
+    return material->Ks() * pow(dotProduct, material->Ns());
+
+}
+
+/**
+ * Method to calculate the shading.
+ *
+ * @param ray the ray.
+ * @param vertexPos  the vertex position.
+ * @param normal the normal.
+ * @param material the material.
+ * @return The shading on impact.
+ */
+Vec3Df calculateShading(const Vec3Df &vertexPosition, Vec3Df &normal, Material *material) {
+
+    // initially black
+    Vec3Df calculatedColor(0, 0, 0);
+
+    // Add the ambient shading
+    if (ambient && material->has_Ka()) {
+        calculatedColor = calculatedColor + material->Ka();
+    }
+
+    // Calculate the shading for every light source.
+    for (int i = 0; i < MyLightPositions.size(); i++) {
+
+        // Add the diffuse shading.
+        if (diffuse && material->has_Kd()) {
+            calculatedColor = calculatedColor + material->Tr() * diffuseFunction(vertexPosition, normal, material, MyLightPositions[i]);
+        }
+
+        // Add the specular shading.
+        if (specular && material->has_Ks() && material->has_Ns()) {
+            calculatedColor = calculatedColor + material->Tr() * specularFunction(vertexPosition, normal, material, MyLightPositions[i]);
+        }
+    }
+
+    return calculatedColor;
+}
+
 
 // https://stackoverflow.com/questions/13484943/print-a-binary-tree-in-a-pretty-way
 int rec[1000006];
@@ -1016,11 +1109,11 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 			MyLightPositionPower[MyLightPositionsPointer] = 0;
 		}
 		break;
-	case 'r':
+	case 'o':
 		MyLightPositionRadius[MyLightPositionsPointer] += .01f;
 		setupMySphereLightPositions();
 		break;
-	case 'R':
+	case 'O':
 		MyLightPositionRadius[MyLightPositionsPointer] -= .01f;
 		if (MyLightPositionRadius[MyLightPositionsPointer] < 0) {
 			MyLightPositionRadius[MyLightPositionsPointer] = 0;
@@ -1084,7 +1177,7 @@ AABB::AABB()
 	triangles = std::vector<Triangle>();
 }
 
-AABB::AABB(const Vec3Df min, const Vec3Df max, const bool full)
+AABB::AABB(const Vec3Df min, const Vec3Df max)
 {
 	minmax_ = std::pair<Vec3Df, Vec3Df>(min, max);
 	vertices_ = std::vector<Vertex>();
@@ -1186,19 +1279,9 @@ AABB::AABB(const Vec3Df min, const Vec3Df max, const bool full)
 	for (int i = 0; i < MyMesh.triangles.size(); i++)
 	{
 		// WithinBox/WithinBoxFull: You Decide...
-		if (full)
+		if (withinBox(MyMesh.triangles[i]))
 		{
-			if (withinBoxFull(MyMesh.triangles[i]))
-			{
-				triangles.push_back(MyMesh.triangles[i]);
-			}
-		}
-		else
-		{
-			if (withinBox(MyMesh.triangles[i]))
-			{
-				triangles.push_back(MyMesh.triangles[i]);
-			}
+			triangles.push_back(MyMesh.triangles[i]);
 		}
 	}
 }
@@ -1241,6 +1324,8 @@ void AABB::highlightBoxEdges()
 {
 	glBegin(GL_LINES);
 	glColor3f(0, 1, 0);
+
+
 
 	// 0------2
 	// |`.    |`.
@@ -1292,48 +1377,30 @@ void AABB::highlightBoxEdges()
 /**********************************************************************************************
 **Axis-Aligned BoundingBox Tree Class
 ***********************************************************************************************/
-BoxTree::BoxTree(const AABB data)
+BoxTree::BoxTree(const AABB data, int level)
 {
 	this->data = data;
 	this->left = NULL;
 	this->right = NULL;
+	this->level = level;
 }
 
-BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right)
+BoxTree::BoxTree(const AABB data, BoxTree *left, BoxTree *right, int level)
 {
 	this->data = data;
 	this->left = left;
 	this->right = right;
+	this->level = level;
 }
 
-void BoxTree::splitMiddle(int minTriangles)
+void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 {
 	// reduces the boxsize to 'fit' the object (i.e. reduce the size of the boundingbox to the minimum required)
 	if (data.triangles.size() > 0) {
-		Vec3Df min = MyMesh.vertices[data.triangles[0].v[0]].p;
-		Vec3Df max = MyMesh.vertices[data.triangles[0].v[0]].p;
-		for (int z = 0; z < data.triangles.size(); z++)
-		{
-			for (int y = 0; y < 3; y++)
-			{
-				for (int x = 0; x < 3; x++)
-				{
-					if (MyMesh.vertices[data.triangles[z].v[y]].p[x] > max[x])
-					{
-						max[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
-					}
-					if (MyMesh.vertices[data.triangles[z].v[y]].p[x] < min[x])
-					{
-						min[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
-					}
-				}
-			}
-		}
-
-		data = AABB(min, max, false);
+		data = data.trim();
 	}
 
-	if (data.triangles.size() < minTriangles)
+	if (data.triangles.size() < minTriangles || level > maxLevel)
 	{
 		return;
 	}
@@ -1352,8 +1419,8 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `. |   `. |
 		//     `+------+
 		Vec3Df midPoint = (data.vertices_[3].p + data.vertices_[7].p) / 2.0f;
-		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
-		left = new BoxTree(leftNode); // Beware: Usage of "new"
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
 
 		//	+------+
 		//  |`.    |`.
@@ -1363,8 +1430,8 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `. |   `. |
 		//     `+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[4].p) / 2.0f;
-		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
-		right = new BoxTree(rightNode); // Beware: Usage of "new"
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
 	}
 	else if (edgeY > edgeX && edgeY > edgeZ)
 	{
@@ -1376,8 +1443,8 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `. |   `. |
 		//     `+------6
 		Vec3Df midPoint = (data.vertices_[6].p + data.vertices_[7].p) / 2.0f;
-		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
-		left = new BoxTree(leftNode); // Beware: Usage of "new"
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
 
 		//	2------+
 		//  |`.    |`.
@@ -1387,8 +1454,8 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `. |   `. |
 		//     `+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[2].p) / 2.0f;
-		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
-		right = new BoxTree(rightNode); // Beware: Usage of "new"
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
 
 	}
 	else
@@ -1401,8 +1468,8 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `. |   `. |
 		//     `+------+
 		Vec3Df midPoint = (data.vertices_[5].p + data.vertices_[7].p) / 2.0f;
-		AABB leftNode = AABB(data.vertices_[0].p, midPoint, false);
-		left = new BoxTree(leftNode); // Beware: Usage of "new"
+		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
+		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
 
 		//	+------+
 		//  |`.    |`.
@@ -1412,17 +1479,21 @@ void BoxTree::splitMiddle(int minTriangles)
 		//   `X |   `. |
 		//     1+------+
 		midPoint = (data.vertices_[0].p + data.vertices_[1].p) / 2.0f;
-		AABB rightNode = AABB(midPoint, data.vertices_[7].p, false);
-		right = new BoxTree(rightNode); // Beware: Usage of "new"
+		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
+		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
 
 	}
 
-	left->splitMiddle(minTriangles);
-	right->splitMiddle(minTriangles);
+	left->splitMiddle(minTriangles, maxLevel);
+	right->splitMiddle(minTriangles, maxLevel);
 }
 
-void BoxTree::splitAvg(int minTriangles, const bool full)
+void BoxTree::splitAvg(int minTriangles, int maxLevel)
 {
+	if (data.triangles.size() > 0) {
+		data = data.trim();
+	}
+
 	// save min and max
 	Vec3Df oldMin = Vec3Df(data.minmax_.first[0], data.minmax_.first[1], data.minmax_.first[2]);
 	Vec3Df oldMax = Vec3Df(data.minmax_.second[0], data.minmax_.second[1], data.minmax_.second[2]);
@@ -1430,35 +1501,9 @@ void BoxTree::splitAvg(int minTriangles, const bool full)
 	Vec3Df newMin = Vec3Df(data.minmax_.first[0], data.minmax_.first[1], data.minmax_.first[2]);
 	Vec3Df newMax = Vec3Df(data.minmax_.second[0], data.minmax_.second[1], data.minmax_.second[2]);
 
-	// reduce empty space of bounding box
-	if (data.triangles.size() > 0)
-	{
-		Vec3Df min = MyMesh.vertices[data.triangles[0].v[0]].p;
-		Vec3Df max = MyMesh.vertices[data.triangles[0].v[0]].p;
-		for (int z = 0; z < data.triangles.size(); z++)
-		{
-			for (int y = 0; y < 3; y++)
-			{
-				for (int x = 0; x < 3; x++)
-				{
-					if (data.withinBoxFull(data.triangles[z]))
-					{
-						if (MyMesh.vertices[data.triangles[z].v[y]].p[x] > max[x])
-						{
-							max[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
-						}
-						if (MyMesh.vertices[data.triangles[z].v[y]].p[x] < min[x])
-						{
-							min[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
-						}
-					}
-				}
-			}
-		}
-		data = AABB(min, max, full);
-	}
 
-	if (data.triangles.size() < minTriangles)
+
+	if (data.triangles.size() < minTriangles || level > maxLevel)
 	{
 		return;
 	}
@@ -1493,15 +1538,42 @@ void BoxTree::splitAvg(int minTriangles, const bool full)
 	newMin[edge] = avg[edge];
 	newMax[edge] = avg[edge];
 
-	AABB leftNode = AABB(oldMin, newMax, full);
-	AABB rightNode = AABB(newMin, oldMax, full);
+	AABB leftNode = AABB(oldMin, newMax);
+	AABB rightNode = AABB(newMin, oldMax);
 
-	left = new BoxTree(leftNode); // Beware: Usage of "new"
-	right = new BoxTree(rightNode); // Beware: Usage of "new"
+	left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
+	right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
 
 	left->parent = this;
 	right->parent = this;
 
-	left->splitAvg(minTriangles, full);
-	right->splitAvg(minTriangles, full);
+	left->splitAvg(minTriangles, maxLevel);
+	right->splitAvg(minTriangles, maxLevel);
+}
+
+// reduce empty space of bounding box
+AABB AABB::trim() {
+	Vec3Df newMin = MyMesh.vertices[triangles[0].v[0]].p;
+	Vec3Df newMax = MyMesh.vertices[triangles[0].v[0]].p;
+	for (int z = 0; z < triangles.size(); z++)
+	{
+		for (int y = 0; y < 3; y++)
+		{
+			for (int x = 0; x < 3; x++)
+			{
+				if (withinBoxFull(triangles[z]))
+				{
+					if (MyMesh.vertices[triangles[z].v[y]].p[x] > newMax[x])
+					{
+						newMax[x] = MyMesh.vertices[triangles[z].v[y]].p[x];
+					}
+					if (MyMesh.vertices[triangles[z].v[y]].p[x] < newMin[x])
+					{
+						newMin[x] = MyMesh.vertices[triangles[z].v[y]].p[x];
+					}
+				}
+			}
+		}
+	}
+	return AABB(newMin, newMax);
 }
