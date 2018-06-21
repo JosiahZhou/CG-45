@@ -75,8 +75,12 @@ void init()
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
 	//here, we set it to the current location of the camera
+<<<<<<< HEAD
 	MyLightPositions.push_back(MyCameraPosition);
     createLightPointer();
+=======
+    MyLightPositions.push_back(MyCameraPosition);
+>>>>>>> edc6c3fc770fcd4730b055154ef9b12008c5cdaf
 
 	maxRecursionLevel = 2;
 	recurseTestRayCount = 0;
@@ -665,9 +669,6 @@ void setupMySphereLightPositions() {
     // Clear old light positions of the sphere.
     MySphereLightPositions.clear();
 
-    // Loop through all the light centers.
-//    for (int i = 0; i < MyLightPosition.size(); i++) {
-
         // We use a seed so that every scene will be the same for all lights,
         // even though we are using random points.
         std::mt19937 seed(light_speed_sphere);
@@ -698,10 +699,8 @@ void setupMySphereLightPositions() {
             // We just add the normal light position.
             MyLightPositions.push_back(lightPosition);
         }
-
         // We add list of points around the sphere into the list.
         MySphereLightPositions.push_back(currentLightSphere);
-//    }
 }
 
 /**
