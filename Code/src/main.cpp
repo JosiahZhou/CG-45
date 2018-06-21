@@ -45,8 +45,6 @@ unsigned int WindowSize_X = 1080;  // resolution X
 unsigned int WindowSize_Y = 1080;  // resolution Y
 
 
-
-
 /**
  * Main function, which is drawing an image (frame) on the screen
 */
@@ -199,9 +197,9 @@ void produceRay(int x_I, int y_I, Vec3Df * origin, Vec3Df * dest)
 
 // Setup of the light pointer - this is called in the init of the raytracer itself.
 void createLightPointer(){
-    MyLightPositions.push_back(getCameraPosition());
-    MyLightPositionAmount.push_back(15);
-    MyLightPositionPower.push_back(1250);
+    MyLightPositions.push_back(MyCameraPosition);
+    MyLightPositionAmount.push_back(20);
+    MyLightPositionPower.push_back(200);
     MyLightPositionRadius.push_back(0.2f);
     setupMySphereLightPositions();
 }
