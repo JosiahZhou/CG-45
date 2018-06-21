@@ -76,7 +76,7 @@ void init()
 	//at least ONE light source has to be in the scene!!!
 	//here, we set it to the current location of the camera
 	//MyLightPositions.push_back(MyCameraPosition);
-	createLightPointer();
+    createLightPointer();
 
 	maxRecursionLevel = 2;
 	recurseTestRayCount = 0;
@@ -694,11 +694,11 @@ void setupMySphereLightPositions() {
                 double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
                 double z = lightPosition[2] + cos(phi) * lightSphereWidth;
                 Vec3Df offset = Vec3Df(x, y, z);
-                currentLightSphere.push_back(offset);
+                MyLightPositions.push_back(offset);
             }
         } else {
             // We just add the normal light position.
-            currentLightSphere.push_back(lightPosition);
+            MyLightPositions.push_back(lightPosition);
         }
 
         // We add list of points around the sphere into the list.
