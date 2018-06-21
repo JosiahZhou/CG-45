@@ -75,12 +75,7 @@ void init()
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
 	//here, we set it to the current location of the camera
-<<<<<<< HEAD
 	MyLightPositions.push_back(MyCameraPosition);
-    createLightPointer();
-=======
-    MyLightPositions.push_back(MyCameraPosition);
->>>>>>> edc6c3fc770fcd4730b055154ef9b12008c5cdaf
 
 	maxRecursionLevel = 2;
 	recurseTestRayCount = 0;
