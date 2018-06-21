@@ -665,7 +665,7 @@ void yourDebugDraw()
 void setupMySphereLightPositions() {
 
     // Clear old light positions of the sphere.
-    MyLightPositions.clear();
+    MySphereLightPositions.clear();
 
     // Loop through all the light centers.
 //    for (int i = 0; i < MyLightPosition.size(); i++) {
