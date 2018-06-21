@@ -254,7 +254,7 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 		}*/
 	}
 	shadowCounter = counter;
-	return true;
+	return shadow;
 }
 
 // returns whether the ray hit something or not
@@ -665,10 +665,10 @@ void yourDebugDraw()
 void setupMySphereLightPositions() {
 
     // Clear old light positions of the sphere.
-    MySphereLightPositions.clear();
+    MyLightPositions.clear();
 
     // Loop through all the light centers.
-    for (int i = 0; i < MyLightPositions.size(); i++) {
+//    for (int i = 0; i < MyLightPosition.size(); i++) {
 
         // We use a seed so that every scene will be the same for all lights,
         // even though we are using random points.
@@ -676,15 +676,15 @@ void setupMySphereLightPositions() {
         std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
 
         // Retrieve the values of the current light.
-        Vec3Df lightPosition = MyLightPositions[i];
-        float lightSphereWidth = MyLightPositionRadius[i];
-        int lightSphereAmount = MyLightPositionAmount[i];
+        Vec3Df lightPosition = MyLightPositions[MyLightPositions.size()-1];
+        float lightSphereWidth = MyLightPositionRadius[MyLightPositionRadius.size()-1];
+        int lightSphereAmount = MyLightPositionAmount[MyLightPositionAmount.size()-1];
 
         // Create the list of points.
         std::vector<Vec3Df> currentLightSphere;
 
         // We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
-        if (MyLightPositionAmount[i] > 1 && MyLightPositionRadius[i] > 0) {
+        if (MyLightPositionAmount[MyLightPositionAmount.size()-1] > 1 && MyLightPositionRadius[MyLightPositionRadius.size()-1] > 0) {
 
             // Calculate position for every surface light.
             for (int i = 0; i < lightSphereAmount; i++) {
@@ -703,7 +703,7 @@ void setupMySphereLightPositions() {
 
         // We add list of points around the sphere into the list.
         MySphereLightPositions.push_back(currentLightSphere);
-    }
+//    }
 }
 
 /**
@@ -1567,7 +1567,7 @@ void BoxTree::splitAvg(int minTriangles, const bool full)
 	newMax[edge] = avg[edge];
 
 	AABB leftNode = AABB(oldMin, newMax, full);
-	AABB rightNode = AABB(newMin, oldMax, !full);
+	AABB rightNode = AABB(newMin, oldMax, full);
 
 	left = new BoxTree(leftNode); // Beware: Usage of "new"
 	right = new BoxTree(rightNode); // Beware: Usage of "new"
@@ -1576,5 +1576,5 @@ void BoxTree::splitAvg(int minTriangles, const bool full)
 	right->parent = this;
 
 	left->splitAvg(minTriangles, full);
-	right->splitAvg(minTriangles, !full);
+	right->splitAvg(minTriangles, full);
 }
