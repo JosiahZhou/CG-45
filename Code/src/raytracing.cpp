@@ -667,9 +667,6 @@ void setupMySphereLightPositions() {
     // Clear old light positions of the sphere.
     MySphereLightPositions.clear();
 
-    // Loop through all the light centers.
-//    for (int i = 0; i < MyLightPosition.size(); i++) {
-
         // We use a seed so that every scene will be the same for all lights,
         // even though we are using random points.
         std::mt19937 seed(light_speed_sphere);
@@ -700,10 +697,8 @@ void setupMySphereLightPositions() {
             // We just add the normal light position.
             MyLightPositions.push_back(lightPosition);
         }
-
         // We add list of points around the sphere into the list.
         MySphereLightPositions.push_back(currentLightSphere);
-//    }
 }
 
 /**
