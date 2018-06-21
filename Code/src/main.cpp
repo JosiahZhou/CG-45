@@ -50,7 +50,7 @@ unsigned int WindowSize_Y = 100;  // resolution Y
 /**
  * Main function, which is drawing an image (frame) on the screen
 */
-void drawFrame( )
+void drawFrame()
 {
 	yourDebugDraw();
 }
@@ -58,7 +58,7 @@ void drawFrame( )
 //animation is called for every image on the screen once
 void animate()
 {
-	MyCameraPosition=getCameraPosition();
+	MyCameraPosition = getCameraPosition();
 	glutPostRedisplay();
 }
 
@@ -71,65 +71,65 @@ void keyboard(unsigned char key, int x, int y);
  */
 int main(int argc, char** argv)
 {
-    glutInit(&argc, argv);
+	glutInit(&argc, argv);
 
-    //framebuffer setup
-    glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH );
+	//framebuffer setup
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
 
-    // positioning and size of window
-    glutInitWindowPosition(200, 100);
-    glutInitWindowSize(WindowSize_X,WindowSize_Y);
-    glutCreateWindow(argv[0]);
+	// positioning and size of window
+	glutInitWindowPosition(200, 100);
+	glutInitWindowSize(WindowSize_X, WindowSize_Y);
+	glutCreateWindow(argv[0]);
 
-    //initialize viewpoint
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glTranslatef(0,0,-4);
-    tbInitTransform();     // This is for the mouse, please ignore
-    tbHelp();             // idem
-	MyCameraPosition=getCameraPosition();
+	//initialize viewpoint
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glTranslatef(0, 0, -4);
+	tbInitTransform();     // This is for the mouse, please ignore
+	tbHelp();             // idem
+	MyCameraPosition = getCameraPosition();
 
 	//activate the light following the camera
-    glEnable( GL_LIGHTING );
-    glEnable( GL_LIGHT0 );
-    glEnable(GL_COLOR_MATERIAL);
-    int LightPos[4] = {0,0,2,0};
-    int MatSpec [4] = {1,1,1,1};
-    glLightiv(GL_LIGHT0,GL_POSITION,LightPos);
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+	glEnable(GL_COLOR_MATERIAL);
+	int LightPos[4] = { 0,0,2,0 };
+	int MatSpec[4] = { 1,1,1,1 };
+	glLightiv(GL_LIGHT0, GL_POSITION, LightPos);
 
 	//normals will be normalized in the graphics pipeline
 	glEnable(GL_NORMALIZE);
-    //clear color of the background is black.
-	glClearColor (0.0, 0.0, 0.0, 0.0);
+	//clear color of the background is black.
+	glClearColor(0.0, 0.0, 0.0, 0.0);
 
 
 	// Activate rendering modes
-    //activate depth test
-	glEnable( GL_DEPTH_TEST );
-    //draw front-facing triangles filled
+	//activate depth test
+	glEnable(GL_DEPTH_TEST);
+	//draw front-facing triangles filled
 	//and back-facing triangles as wires
-    glPolygonMode(GL_FRONT,GL_FILL);
-    glPolygonMode(GL_BACK,GL_LINE);
-    //interpolate vertex colors over the triangles
+	glPolygonMode(GL_FRONT, GL_FILL);
+	glPolygonMode(GL_BACK, GL_LINE);
+	//interpolate vertex colors over the triangles
 	glShadeModel(GL_SMOOTH);
 
 
 	// glut setup... to ignore
-    glutReshapeFunc(reshape);
-    glutKeyboardFunc(keyboard);    // keyboard callback
-    glutDisplayFunc(display);      // draw callback
-    glutMouseFunc(tbMouseFunc);    // mouse callback
-    glutMotionFunc(tbMotionFunc);  // mouse callback
-    glutIdleFunc( animate);        // animation callback
+	glutReshapeFunc(reshape);
+	glutKeyboardFunc(keyboard);    // keyboard callback
+	glutDisplayFunc(display);      // draw callback
+	glutMouseFunc(tbMouseFunc);    // mouse callback
+	glutMotionFunc(tbMotionFunc);  // mouse callback
+	glutIdleFunc(animate);        // animation callback
 
 
 	init();
 
 
 	//main loop for glut... this just runs your application
-    glutMainLoop();
+	glutMainLoop();
 
-    return 0;  // execution never reaches this point
+	return 0;  // execution never reaches this point
 }
 
 
@@ -146,79 +146,79 @@ int main(int argc, char** argv)
  * OpenGL setup - functions do not need to be changed!
  * you can SKIP AHEAD TO THE KEYBOARD FUNCTION
  */
-//what to do before drawing an image
- void display(void)
+ //what to do before drawing an image
+void display(void)
 {
 	glPushAttrib(GL_ALL_ATTRIB_BITS);//store GL state
-    // Clear everything
-    glClear( GL_COLOR_BUFFER_BIT  | GL_DEPTH_BUFFER_BIT); // clear image
+	// Clear everything
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear image
 
-    glLoadIdentity();
+	glLoadIdentity();
 
-    tbVisuTransform(); // init mouse
+	tbVisuTransform(); // init mouse
 
-    drawFrame( );    //actually draw
+	drawFrame();    //actually draw
 
-    glutSwapBuffers();//glut internal switch
+	glutSwapBuffers();//glut internal switch
 	glPopAttrib();//return to old GL state
 }
 //Window changes size
 void reshape(int w, int h)
 {
-    glViewport(0, 0, (GLsizei) w, (GLsizei) h);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    //glOrtho (-1.1, 1.1, -1.1,1.1, -1000.0, 1000.0);
-    gluPerspective (50, (float)w/h, 0.01, 10);
-    glMatrixMode(GL_MODELVIEW);
+	glViewport(0, 0, (GLsizei)w, (GLsizei)h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	//glOrtho (-1.1, 1.1, -1.1,1.1, -1000.0, 1000.0);
+	gluPerspective(50, (float)w / h, 0.01, 10);
+	glMatrixMode(GL_MODELVIEW);
 }
 
 
 //transform the x, y position on the screen into the corresponding 3D world position
 void produceRay(int x_I, int y_I, Vec3Df * origin, Vec3Df * dest)
 {
-		int viewport[4];
-		double modelview[16];
-		double projection[16];
-		glGetDoublev(GL_MODELVIEW_MATRIX, modelview); // get current matrices
-		glGetDoublev(GL_PROJECTION_MATRIX, projection); // get current matrices
-		glGetIntegerv(GL_VIEWPORT, viewport);//viewport
-		int y_new = viewport[3] - y_I;
+	int viewport[4];
+	double modelview[16];
+	double projection[16];
+	glGetDoublev(GL_MODELVIEW_MATRIX, modelview); // get current matrices
+	glGetDoublev(GL_PROJECTION_MATRIX, projection); // get current matrices
+	glGetIntegerv(GL_VIEWPORT, viewport);//viewport
+	int y_new = viewport[3] - y_I;
 
-		double x, y, z;
+	double x, y, z;
 
-		gluUnProject(x_I, y_new, 0, modelview, projection, viewport, &x, &y, &z);
-		origin->p[0]=float(x);
-		origin->p[1]=float(y);
-		origin->p[2]=float(z);
-		gluUnProject(x_I, y_new, 1, modelview, projection, viewport, &x, &y, &z);
-		dest->p[0]=float(x);
-		dest->p[1]=float(y);
-		dest->p[2]=float(z);
+	gluUnProject(x_I, y_new, 0, modelview, projection, viewport, &x, &y, &z);
+	origin->p[0] = float(x);
+	origin->p[1] = float(y);
+	origin->p[2] = float(z);
+	gluUnProject(x_I, y_new, 1, modelview, projection, viewport, &x, &y, &z);
+	dest->p[0] = float(x);
+	dest->p[1] = float(y);
+	dest->p[2] = float(z);
 }
 
 // Setup of the light pointer - this is called in the init of the raytracer itself.
-void createLightPointer(){
-    MyLightPositions.push_back(getCameraPosition());
-    MyLightPositionAmount.push_back(15);
-    MyLightPositionPower.push_back(1250);
-    MyLightPositionRadius.push_back(0.2f);
-    setupMySphereLightPositions();
+void createLightPointer() {
+	MyLightPositions.push_back(getCameraPosition());
+	MyLightPositionAmount.push_back(15);
+	MyLightPositionPower.push_back(1250);
+	MyLightPositionRadius.push_back(0.2f);
+	setupMySphereLightPositions();
 }
 
 // react to keyboard input
 void keyboard(unsigned char key, int x, int y)
 {
-    printf("key %d pressed at %d,%d\n",key,x,y);
-    fflush(stdout);
-    switch (key)
-    {
-	//add/update a light based on the camera position.
+	printf("key %d pressed at %d,%d\n", key, x, y);
+	fflush(stdout);
+	switch (key)
+	{
+		//add/update a light based on the camera position.
 	case 'L':
 		MyLightPositions.push_back(getCameraPosition());
 		break;
 	case 'l':
-		MyLightPositions[MyLightPositions.size()-1]=getCameraPosition();
+		MyLightPositions[MyLightPositions.size() - 1] = getCameraPosition();
 		break;
 	case 'r':
 	{
@@ -250,8 +250,8 @@ void keyboard(unsigned char key, int x, int y)
 		float doneLines = 0.0f;
 		//openMP runs this for loop in parallel.
 		// #pragma omp parallel for ordered schedule(dynamic)
-		for (int y=0; y<WindowSize_Y;++y) {
-			for (int x=0; x<WindowSize_X;++x)
+		for (int y = 0; y < WindowSize_Y; ++y) {
+			for (int x = 0; x < WindowSize_X; ++x)
 			{
 				//produce the rays for each pixel, by interpolating
 				//the four rays of the frustum corners.
@@ -266,14 +266,14 @@ void keyboard(unsigned char key, int x, int y)
 				//launch raytracing for the given ray.
 				Vec3Df dir = dest - origin;
 				dir.normalize();
-				Ray ray = {origin, dir, false};
+				Ray ray = { origin, dir, false };
 
-				Vec3Df rgb;
+				Vec3Df rgb = Vec3Df(0, 0, 0);
 				Trace(0, ray, rgb, Triangle());
 				//store the result in an image
 				result.setPixel(x, y, RGBValue(rgb[0], rgb[1], rgb[2]));
 			}
-			percentage = (double)y / (double)(WindowSize_Y-1) * 100;
+			percentage = (double)y / (double)(WindowSize_Y - 1) * 100;
 			auto end = std::chrono::system_clock::now();
 			std::chrono::duration<double> diff = end - start;
 
@@ -285,13 +285,14 @@ void keyboard(unsigned char key, int x, int y)
 		break;
 	}
 	case 27:     // ESC pressed
-        exit(0);
-    }
+		exit(0);
+	}
 
-
+	std::cout << "HERE" << std::endl;
 	//produce the ray for the current mouse position
 	Vec3Df testRayOrigin, testRayDestination;
 	produceRay(x, y, &testRayOrigin, &testRayDestination);
 
-	yourKeyboardFunc(key,x,y, testRayOrigin, testRayDestination);
+	yourKeyboardFunc(key, x, y, testRayOrigin, testRayDestination);
+	std::cout << "HERE2" << std::endl;
 }

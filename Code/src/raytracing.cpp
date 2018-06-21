@@ -341,7 +341,7 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	// TODO: figure out proper mirrorReflectance/specular usage, both should be handled differently
 	color = diffuseContribution*intersect.material.Kd()*directColor + specularLuminance*intersect.material.Ks() + mirrorReflectance*reflectedColor + glassRefractance*refractedColor;
 
-	std::cout << "Got color " << color << " from level " << level << std::endl;
+	//std::cout << "Got color " << color << " from level " << level << std::endl;
 
 	return;
 }
@@ -365,7 +365,7 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 		recurseTestRayDestinations[recurseTestRayCount] = intersect.point;
 		recurseTestRayCount++;
 
-		std::cout << "  Traced a ray on level " << level << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << intersect.distance << std::endl;
+		//std::cout << "  Traced a ray on level " << level << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << intersect.distance << std::endl;
 
 		if (intersect.distance >= 0) Shade(level, ray, intersect, color);
 	} else {
@@ -1477,7 +1477,7 @@ void BoxTree::splitAvg(int minTriangles, const bool full)
 	newMax[edge] = avg[edge];
 
 	AABB leftNode = AABB(oldMin, newMax, full);
-	AABB rightNode = AABB(newMin, oldMax, !full);
+	AABB rightNode = AABB(newMin, oldMax, full);
 
 	left = new BoxTree(leftNode); // Beware: Usage of "new"
 	right = new BoxTree(rightNode); // Beware: Usage of "new"
@@ -1486,5 +1486,5 @@ void BoxTree::splitAvg(int minTriangles, const bool full)
 	right->parent = this;
 
 	left->splitAvg(minTriangles, full);
-	right->splitAvg(minTriangles, !full);
+	right->splitAvg(minTriangles, full);
 }
