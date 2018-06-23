@@ -22,23 +22,25 @@ template<class T> Tree<T>::Tree(const T &data, Tree<T>* left, Tree<T>* right)
 	this->right = right;
 }
 
+// Splits the box of the tree into two and allocates them to the left
+// and right trees until the minimum triangles in a box has been
+// exceeded.
 void Tree<Box>::split(const int &minTriangles, const Mesh &mesh)
 {
-	std::pair<Box, Box> boxes = data.split(minTriangles, mesh);
+	if (data.triangles.size() < minTriangles) return;
+	std::pair<Box, Box> boxes = data.split(mesh);
 
 	this->left = new Tree<Box>(boxes.first);
 	this->right = new Tree<Box>(boxes.second);
 
-	if (left == 0)
-	{
-		this->left->split(minTriangles, mesh);
-		this->right->split(minTriangles, mesh);
-	}
+	this->left->split(minTriangles, mesh);
+	this->right->split(minTriangles, mesh);
 }
 
 // https://stackoverflow.com/questions/13484943/print-a-binary-tree-in-a-pretty-way
 int rec[1000006];
 // Prints the BoxTree in directory-format
+// TODO: fix this
 void Tree<Box>::print(const int depth)
 {
 	if (this == NULL) return;
