@@ -198,9 +198,9 @@ Box::Box(const Vec3Df min, const Vec3Df max, const Mesh &mesh)
 // of the bounding box.
 bool Box::contains(const Vertex &v)
 {
-	if (v.p[0] >= corners[0].p[0] && v.p[0] <= corners[7].p[0] &&
-		v.p[1] >= corners[0].p[1] && v.p[1] <= corners[7].p[1] &&
-		v.p[0] >= corners[0].p[2] && v.p[2] <= corners[7].p[2])
+	if (v.p[0] >= corners[0].p[0] && v.p[0] <= corners[7].p[0]
+		&& v.p[1] >= corners[0].p[1] && v.p[1] <= corners[7].p[1]
+		&& v.p[2] >= corners[0].p[2] && v.p[2] <= corners[7].p[2])
 	{
 		return true;
 	}
@@ -312,7 +312,7 @@ std::pair<Box, Box> Box::split(const int & minTriangles, const Mesh &mesh)
 
 	for (int i = 0; i < triangles.size(); ++i)
 	{
-		for (int m = 0; m < 3; m++)
+		for (int m = 0; m < 3; ++m)
 		{
 			avg += mesh.vertices[triangles[i]->v[m]].p;
 		}
