@@ -18,9 +18,9 @@ public:
 
 	void print(const int depth);
 
-	std::vector<Box>* getBoxes(void);
-
 	std::vector<Box>* getLeaves(void);
+
+	void Tree<Box>::highlightEdges(void);
 };
 
 

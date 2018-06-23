@@ -42,37 +42,15 @@ int rec[1000006];
 void Tree<Box>::print(const int depth)
 {
 	if (this == NULL) return;
-	printf("\t");
-	for (int i = 0; i < depth; ++i)
-	{
-		if (i == depth - 1)
-		{
-			printf("%s---|");
-		}
-		else
-		{
-			printf("%s   ", rec[i] ? "|" : "  ");
-		}
-	}
+
 	printf("%ld\n", this->data.triangles.size());
-	rec[depth] = 1;
+	printf("|      ");
+
 	this->right->print(depth + 1);
-	rec[depth] = 0;
 	this->left->print(depth + 1);
 }
 
-// Getter for all the boxes inside the Tree<Box>. Boxes are added recursively to a tree.
-// The getter is used for debug purposes.
-std::vector<Box>* Tree<Box>::getBoxes(void)
-{
-	if (this == NULL) return &std::vector<Box>();
-	std::vector<Box>* boxes = this->left->getBoxes();
-	std::vector<Box>* rightBoxes = this->right->getBoxes();
-	boxes->insert(boxes->end(), rightBoxes->begin(), rightBoxes->end());
-	boxes->push_back(this->data);
-	return boxes;
-}
-
+// Getter for all the leaf boxes inside the Tree<Box>. Boxes are added recursively to a tree.
 std::vector<Box>* Tree<Box>::getLeaves(void)
 {
 	if (this == NULL) return &std::vector<Box>();
@@ -81,4 +59,13 @@ std::vector<Box>* Tree<Box>::getLeaves(void)
 	std::vector<Box>* rightBoxes = this->right->getLeaves();
 	boxes->insert(boxes->end(), rightBoxes->begin(), rightBoxes->end());
 	return boxes;
+}
+
+// Highlight all the edges of the boxes in the tree.
+void Tree<Box>::highlightEdges(void)
+{
+	this->data.highlightEdges();
+	if (left == NULL) return;
+	this->left->highlightEdges();
+	this->right->highlightEdges();
 }
