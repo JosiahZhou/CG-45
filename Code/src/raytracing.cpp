@@ -154,15 +154,20 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle t, Tree<Box
 	Vec3Df direction = dest - origin;
 	float minDist = INFINITY;
 	Vec3Df foundIntersection;
-	std::vector<Box>* boxes = root->getBoxes();
+	std::stack<Tree<Box>*> stack;
+	stack.push(root);
 	Ray r = { origin, direction };
 
-	for (int b = 0; b < boxes->size(); ++b)
+	while(!stack.empty())
 	{
-		Box box = boxes->at(b);
+		Tree<Box>* curr = stack.top();
+		Box box = stack.top()->data;
+		stack.pop();
 		Vec3Df pin, pout;
 		if (rayIntersectionPointBox(r, box, pin, pout))
 		{
+			stack.push(curr->left);
+			stack.push(curr->right);
 			for (int i = 0; i < box.triangles.size(); ++i)
 			{
 				Vec3Df pointOfIntersection;
@@ -966,28 +971,8 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 	break;
 	case 'd': // constructs axis aligned bounding boxes
 	{
-
-		Vec3Df pin, pout;
-		Ray r;
-		r.origin = rayOrigin;
-		r.direction = rayDestination - rayOrigin;
-
-		// Splitting the tree
-		//tree.splitMiddle(4000);
-		//tree.splitAvg(4000);
-
-		// Draw smallest Intersected Box
-		//boxes.push_back(getFirstIntersectedBox(r, &tree, pin, pout));
-		//boxes.push_back(getFirstIntersectedBoxFast(r, &tree, pin, pout).data);
-
-		std::cout << root->left->data.triangles.size() << std::endl;
-
 		root->print(0);
-
-		/*if (rayIntersectionPointBox(rayOrigin, normRayDirection, boxes[0], pin, pout))
-		{
-			std::cout << "Ray InterSects Box: \n" << pin << "\n" << pout << std::endl;
-		}*/
+		root->highlightEdges();
 	}
 	break;
 	case 'f':
