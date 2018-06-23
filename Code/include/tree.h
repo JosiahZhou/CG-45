@@ -14,14 +14,18 @@ public:
 	Tree<T>* left;
 	Tree<T>* right;
 
+	int size(void)
+	{
+		if (this == NULL) return 0;
+		return this->left->size() + this->right->size() + 1;
+	}
+
 	void split(const int &minTriangles, const Mesh &mesh);
 
 	void print(const int depth);
 
 	std::vector<Box>* getLeaves(void);
 
-	void Tree<Box>::highlightEdges(void);
+	void highlightEdges(void);
 };
-
-
 #endif
