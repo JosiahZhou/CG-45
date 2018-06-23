@@ -972,6 +972,7 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 	case 'd': // constructs axis aligned bounding boxes
 	{
 		root->print(0);
+		std::cout << root->size() << std::endl;
 		root->highlightEdges();
 	}
 	break;
