@@ -28,8 +28,8 @@
 Vec3Df MyCameraPosition;
 
 //MyLightPositions stores all the light positions to use
-//for the ray tracing. Please notice, the light that is 
-//used for the real-time rendering is NOT one of these, 
+//for the ray tracing. Please notice, the light that is
+//used for the real-time rendering is NOT one of these,
 //but following the camera instead.
 std::vector<Vec3Df> MyLightPositions;
 std::vector<int> MyLightPositionAmount;
@@ -41,10 +41,8 @@ std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 //Main mesh 
 Mesh MyMesh;
 
-unsigned int WindowSize_X = 1080;  // resolution X
-unsigned int WindowSize_Y = 1080;  // resolution Y
-
-
+unsigned int WindowSize_X = 600;  // resolution X
+unsigned int WindowSize_Y = 600;  // resolution Y
 
 
 /**
@@ -198,12 +196,12 @@ void produceRay(int x_I, int y_I, Vec3Df * origin, Vec3Df * dest)
 }
 
 // Setup of the light pointer - this is called in the init of the raytracer itself.
-void createLightPointer() {
-	MyLightPositions.push_back(getCameraPosition());
-	MyLightPositionAmount.push_back(15);
-	MyLightPositionPower.push_back(1250);
-	MyLightPositionRadius.push_back(0.2f);
-	setupMySphereLightPositions();
+void createLightPointer(){
+    MyLightPositions.push_back(MyCameraPosition);
+    MyLightPositionAmount.push_back(20);
+    MyLightPositionPower.push_back(200);
+    MyLightPositionRadius.push_back(0.2f);
+    setupMySphereLightPositions();
 }
 
 // react to keyboard input
@@ -249,11 +247,11 @@ void keyboard(unsigned char key, int x, int y)
 
 		float doneLines = 0.0f;
 		//openMP runs this for loop in parallel.
-#pragma omp parallel for ordered schedule(dynamic)
+		#pragma omp parallel for ordered schedule(dynamic)
 		for (int y = 0; y < WindowSize_Y; ++y) {
 			for (int x = 0; x < WindowSize_X; ++x)
 			{
-				//produce the rays for each pixel, by interpolating 
+				//produce the rays for each pixel, by interpolating
 				//the four rays of the frustum corners.
 				float xscale = 1.0f - float(x) / (WindowSize_X - 1);
 				float yscale = 1.0f - float(y) / (WindowSize_Y - 1);
@@ -264,8 +262,13 @@ void keyboard(unsigned char key, int x, int y)
 					(1 - yscale)*(xscale*dest01 + (1 - xscale)*dest11);
 
 				//launch raytracing for the given ray.
-				Vec3Df rgb = performRayTracing(origin, dest);
-				//store the result in an image 
+				Vec3Df dir = dest - origin;
+				dir.normalize();
+				Ray ray = { origin, dir };
+
+				Vec3Df rgb = Vec3Df(0, 0, 0);
+				Trace(0, ray, rgb, Triangle());
+				//store the result in an image
 				result.setPixel(x, y, RGBValue(rgb[0], rgb[1], rgb[2]));
 			}
 			percentage = (double)y / (double)(WindowSize_Y - 1) * 100;
@@ -283,10 +286,11 @@ void keyboard(unsigned char key, int x, int y)
 		exit(0);
 	}
 
-
+	std::cout << "HERE" << std::endl;
 	//produce the ray for the current mouse position
 	Vec3Df testRayOrigin, testRayDestination;
 	produceRay(x, y, &testRayOrigin, &testRayDestination);
 
 	yourKeyboardFunc(key, x, y, testRayOrigin, testRayDestination);
+	std::cout << "HERE2" << std::endl;
 }

@@ -18,6 +18,10 @@
 #include <stack>
 
 int light_speed_sphere = 12391;
+bool diffuse = true;
+bool specular = true;
+bool ambient = true;
+bool shading = true;
 
 //temporary variables
 //these are only used to illustrate
@@ -25,17 +29,27 @@ int light_speed_sphere = 12391;
 Vec3Df testRayOrigin;
 Vec3Df testRayDestination;
 
-Vec3Df recurseTestRayOrigins[20];
-Vec3Df recurseTestRayDestinations[20];
+Vec3Df recurseTestRayOrigins[50];
+Vec3Df recurseTestRayDestinations[50];
+bool drawRecurseRays;
 
 unsigned int recurseTestRayCount;
-// define function before implementation
 Tree<Box>* root;
 
 
 // std::map<std::string, unsigned int> materialIndex;
 
 unsigned int maxRecursionLevel;
+unsigned int shadowCounter;
+
+void resetRecurseTestRays(void) {
+	for (int i = 0; i < 50; i++) {
+		recurseTestRayOrigins[i] = Vec3Df(0, 0, 0);
+		recurseTestRayDestinations[i] = Vec3Df(0, 0, 0);
+	}
+
+	recurseTestRayCount = 0;
+}
 
 //use this function for any preprocessing of the mesh.
 void init()
@@ -47,7 +61,6 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	// MyMesh.loadMtl("test_scene_1.mtl", materialIndex);
 	MyMesh.loadMesh("test_scene_1.obj", true);
 	MyMesh.computeVertexNormals();
 
@@ -58,16 +71,13 @@ void init()
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
 	//here, we set it to the current location of the camera
-	//MyLightPositions.push_back(MyCameraPosition);
-	createLightPointer();
+	MyLightPositions.push_back(MyCameraPosition);
 
-	maxRecursionLevel = 2;
+	maxRecursionLevel = 5;
 	recurseTestRayCount = 0;
 
-	for (int i = 0; i < 20; i++) {
-		recurseTestRayOrigins[i] = Vec3Df(0, 0, 0);
-		recurseTestRayDestinations[i] = Vec3Df(0, 0, 0);
-	}
+	resetRecurseTestRays();
+	drawRecurseRays = false;
 }
 
 
@@ -79,7 +89,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 	Vec3Df foundIntersection;
 	Triangle t;
 	bool intersect;
-	Ray r = { origin, direction, false };
+	Ray r = { origin, direction };
 
 	Vec3Df pin, pout;
 	if (rayIntersectionPointBox(r, root->data, pin, pout))
@@ -114,11 +124,17 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 
 			if (intersect) {
 				if (isInShadow(foundIntersection, t, root)) {
-					return Vec3Df(0, 0, 0); // shadow == black
+					Vec3Df color = Vec3Df(1, 1, 1);
+					int light = MyLightPositions.size() - shadowCounter;
+					double weight = (double)shadowCounter / (double)MyLightPositions.size(); // percentage in shadow
+					color = (1.0 - weight) * color;
+					//std::cout << "[IsInShadow] : color: " << color << std::endl;
+					return color; // shadow == black
 				}
 				else {
 					// color and other stuff here as well...
 					return Vec3Df(1, 1, 1); // light == white
+
 				}
 			}
 			//else
@@ -138,8 +154,8 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle t, Tree<Box
 	Vec3Df direction = dest - origin;
 	float minDist = INFINITY;
 	Vec3Df foundIntersection;
-	Ray r = { origin, direction, false };
 	std::vector<Box>* boxes = root->getBoxes();
+	Ray r = { origin, direction };
 
 	for (int b = 0; b < boxes->size(); ++b)
 	{
@@ -167,9 +183,12 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle t, Tree<Box
 }
 
 bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle, Tree<Box>* root) {
-	for (Vec3Df light : MyLightPositions) {
+	int counter = 0;
+	bool shadow = false;
+	int x = 0;
+	for (x = 0; x < MyLightPositions.size(); x++) {
 		Vec3Df origin = intersection;;
-		Vec3Df dest = light;
+		Vec3Df dest = MyLightPositions[x];
 		Triangle foundTriangle;
 		float minDist = INFINITY;
 		/*********************************************************/
@@ -177,41 +196,42 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle, Tree<Box
 		/*********************************************************/
 		Vec3Df direction = dest - origin;
 		origin = origin + 0.001f * direction;
-		float distance;
 		Ray ray;
 		ray.origin = origin;
 		ray.direction = direction;
-		ray.insideMaterial = false;
-		//bool hitSomething = Intersect(0, ray, intersection, intersectionTriangle, Triangle(), distance);
-		std::vector<Box>* boxes = root->getBoxes();
-
-		for (int b = 0; b < boxes->size(); ++b) {
-			Box box = boxes->at(b);
-			Vec3Df pin, pout;
-			// then trace the ray down to the right triangle
-			if (rayIntersectionPointBox(ray, box, pin, pout)) {
-				for (int i = 0; i < box.triangles.size(); i++) {
-					Vec3Df intersect;
-					float distanceRay;
-					const Triangle* triangle = box.triangles[i];
-					// if an intersection gets found, put the resulting point and triangle in the result vars
-					if (rayIntersectionPointTriangle(ray, *triangle, Triangle(), intersect, distanceRay)) {
-						if (distanceRay > 0) {
-							minDist = distanceRay;
-							return true;
-						}
-						// if (distanceRay < 0) pointOfIntersection = pointOfIntersection + 5*ray.direction;
-
+		Vec3Df pin, pout;
+		if (rayIntersectionPointBox(ray, root->data, pin, pout))
+		{
+			Box box = root->data;
+			for (int i = 0; i < box.triangles.size(); i++) {
+				Vec3Df intersect;
+				float distanceRay;
+				const Triangle* triangle = box.triangles[i];
+				// if an intersection gets found, put the resulting point and triangle in the result vars
+				if (rayIntersectionPointTriangle(ray, *triangle, Triangle(), intersect, distanceRay)) {
+					//intersectBool = true;
+					if (distanceRay > 0) {
+						minDist = distanceRay;
+						counter = counter + 1;
+						//std::cout << "[IsInShadow] : counter: " << counter << std::endl;
+						shadow = true;
+						goto nextsource;
 					}
 				}
 			}
 		}
+
+	nextsource:
+		float random;
+
 		/*if (hitSomething) {
 			return hitSomething;
 		}*/
 	}
-	return false;
+	shadowCounter = counter;
+	return shadow;
 }
+
 // returns whether the ray hit something or not
 bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Triangle ignoreTriangle) {
 	// if (level > maxRecursionLevel) return false;
@@ -231,8 +251,12 @@ bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Trian
 				intersect.triangle = triangle;
 				intersect.distance = distance;
 				intersect.material = MyMesh.materials[MyMesh.triangleMaterials[i]];
+
+				Vec3Df n = calculateSurfaceNormal(triangle);
+				n.normalize();
+
+				intersect.schlickCosTheta = fabs(Vec3Df::dotProduct(n, ray.direction));
 			}
-			// if (distanceRay < 0) pointOfIntersection = pointOfIntersection + 5*ray.direction;
 		}
 	}
 
@@ -241,22 +265,18 @@ bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Trian
 }
 
 void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& color) {
-	Vec3Df directColor, reflectedColor, refractedColor;
+	Vec3Df directColor, reflectedColor, refractedColor, specularLuminance;
 	directColor = Vec3Df(0, 0, 0);
 	reflectedColor = Vec3Df(0, 0, 0);
 	refractedColor = Vec3Df(0, 0, 0);
 
 	Ray reflectedRay, refractedRay;
-	float reflection, transmission;
 
-	// temporary reflection and transmission values of 0.5
-	// TODO: calculate correct values according to material and angle
-	reflection = 0.5;
-	transmission = 0.5;
-
-	bool computeDirect, computeReflect, computeRefract;
-	computeDirect = computeReflect = computeRefract = false;
+	bool computeDirect, computeReflect, computeRefract, computeSpecular;
+	computeDirect = computeReflect = computeRefract = computeSpecular = false;
 	Vec3Df mirrorReflectance = Vec3Df(0, 0, 0);
+	Vec3Df glassRefractance = Vec3Df(0, 0, 0);
+	Vec3Df diffuseContribution = Vec3Df(1, 1, 1);
 
 	// determine which contributions need to be computed for which materials
 	switch (intersect.material.illum()) {
@@ -267,41 +287,63 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 		// highlights on (diffuse + specular highlights)
 	case 2:
 		computeDirect = true;
-		computeReflect = true;
+		computeSpecular = true;
 		break;
 		// pure mirror
 	case 3:
 		computeDirect = true;
 		computeReflect = true;
+		computeSpecular = true;
+		// TODO: tune values
 		mirrorReflectance = intersect.material.Ka();
+		diffuseContribution = Vec3Df(1, 1, 1) - mirrorReflectance;
 		break;
-		// realistic glass (both reflection and refraction)
-	case 4:
-		computeReflect = true;
-		computeRefract = true;
-		break;
+		// // realistic glass (both reflection and refraction)
+		// case 4:
+		// 	computeReflect = true;
+		// 	computeRefract = true;
+		// 	computeSpecular = true;
+		// 	break;
 		// general glossy material (reflection/refraction, ray trace on, fresnel off)
+		// TODO: look at partially opaque materials (frosted glass etc)
 	case 6:
+	{
 		computeReflect = true;
 		computeRefract = true;
+		computeSpecular = true;
+		diffuseContribution = Vec3Df(0, 0, 0);
+		mirrorReflectance = intersect.material.Ka();
+
+		float R0 = (intersect.material.Ni() - 1.0f) / (intersect.material.Ni() + 1.0f);
+		R0 *= R0;
+		float sc = (1 - intersect.schlickCosTheta);
+		float schlickReflectance = R0 + (1 - R0)*sc*sc*sc*sc*sc;
+
+		glassRefractance = Vec3Df(1, 1, 1) - mirrorReflectance;
+
+		mirrorReflectance += glassRefractance * schlickReflectance;
+		glassRefractance *= (1 - schlickReflectance);
 		break;
-		// pure refractive material (no reflections)
+	}
+	// pure refractive material (no reflections)
 	case 9:
 		computeRefract = true;
+		computeSpecular = true;
+		diffuseContribution = Vec3Df(0, 0, 0);
 		break;
-		// by default enable all three, but give a warning in the terminal
+		// by default compute nothing and give a warning in the terminal
 	default:
-		computeDirect = true;
-		computeReflect = true;
-		computeRefract = true;
 		printf("Warning: unknown material type %d, please check...", intersect.material.illum());
 		break;
 	}
 
-	if (computeDirect) ComputeDirectLight(intersect.point, directColor);
+	if (computeDirect) ComputeDirectLight(intersect, directColor);
 
-	if (computeReflect && level + 1 <= maxRecursionLevel) {
-		if (ComputeReflectedRay(origRay, intersect.point, intersect.triangle, reflectedRay)) Trace(level + 1, reflectedRay, reflectedColor, intersect.triangle);
+	if ((computeReflect || computeSpecular) && level + 1 <= maxRecursionLevel) {
+		if (ComputeReflectedRay(origRay, intersect.point, intersect.triangle, reflectedRay)) {
+			if (computeReflect) Trace(level + 1, reflectedRay, reflectedColor, intersect.triangle);
+			if (computeSpecular) BounceLight(reflectedRay, specularLuminance, intersect.triangle);
+		}
 	}
 
 	if (computeRefract && level + 1 <= maxRecursionLevel) {
@@ -309,9 +351,16 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	}
 
 	// TODO: figure out proper mirrorReflectance/specular usage, both should be handled differently
-	color = (Vec3Df(1, 1, 1) - mirrorReflectance)*intersect.material.Kd()*directColor + mirrorReflectance * reflection*reflectedColor + intersect.material.Ks()*transmission*refractedColor;
+	color = diffuseContribution * intersect.material.Kd()*directColor + specularLuminance * intersect.material.Ks() + mirrorReflectance * reflectedColor + glassRefractance * refractedColor;
+
+	if (drawRecurseRays && level == 0) std::cout << "Got color " << color << " from level " << level << std::endl;
 
 	return;
+}
+
+void BounceLight(Ray ray, Vec3Df& luminance, Triangle ignoreTriangle) {
+	// TODO
+	luminance = Vec3Df(0, 0, 0);
 }
 
 void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) {
@@ -324,11 +373,13 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 			intersect.point = ray.origin + 5 * newRayDir;
 		}
 
-		recurseTestRayOrigins[recurseTestRayCount] = ray.origin;
-		recurseTestRayDestinations[recurseTestRayCount] = intersect.point;
-		recurseTestRayCount++;
+		if (drawRecurseRays) {
+			recurseTestRayOrigins[recurseTestRayCount] = ray.origin;
+			recurseTestRayDestinations[recurseTestRayCount] = intersect.point;
+			recurseTestRayCount++;
 
-		std::cout << "  Traced a ray on level " << level << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << intersect.distance << std::endl;
+			std::cout << "  Traced a ray on level " << level << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << intersect.distance << std::endl;
+		}
 
 		if (intersect.distance >= 0) Shade(level, ray, intersect, color);
 	}
@@ -339,14 +390,14 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 	return;
 }
 
-void ComputeDirectLight(Vec3Df pointOfIntersection, Vec3Df& directColor) {
+void ComputeDirectLight(Intersection intersect, Vec3Df& directColor) {
 	// if (isInShadow(pointOfIntersection, Triangle())) {
-	// 	directColor = Vec3Df(0, 0, 0); // Hard shadow, item is in the shadow thus color is black
-	// }
+	directColor = Vec3Df(1, 1, 1); // Hard shadow, item is in the shadow thus color is black
+// }
 
-	/*
-	Better if this method is removed or the return should be a boolean, it is not necessary  to calculate colors, reflections if there's a shadow cast on the triangle/intersection.
-	*/
+/*
+Better if this method is removed or the return should be a boolean, it is not necessary  to calculate colors, reflections if there's a shadow cast on the triangle/intersection.
+*/
 
 	return;
 }
@@ -359,7 +410,6 @@ bool ComputeReflectedRay(Ray origRay, Vec3Df pointOfIntersection, Triangle trian
 	// calculate reflected direction vector
 	reflectedRay.direction = origRay.direction - 2 * n*(Vec3Df::dotProduct(origRay.direction, n));
 	reflectedRay.direction.normalize();
-	reflectedRay.insideMaterial = origRay.insideMaterial;
 
 	return true;
 }
@@ -394,8 +444,6 @@ bool ComputeRefractedRay(Ray origRay, Intersection intersect, Ray& refractedRay)
 
 	// check if sqrt returned something negative
 	if (std::isnan(refractedRay.direction.p[0]) || std::isnan(refractedRay.direction.p[1]) || std::isnan(refractedRay.direction.p[2])) return false;
-
-	refractedRay.insideMaterial = !(origRay.insideMaterial);
 
 	return true;
 }
@@ -603,48 +651,42 @@ void yourDebugDraw()
  * This is necessary for soft shadows. Soft shadows is basically the same principle as hard shadows but then with multiple light sources.
  */
 void setupMySphereLightPositions() {
-
 	// Clear old light positions of the sphere.
 	MySphereLightPositions.clear();
 
-	// Loop through all the light centers.
-	for (int i = 0; i < MyLightPositions.size(); i++) {
+	// We use a seed so that every scene will be the same for all lights,
+	// even though we are using random points.
+	std::mt19937 seed(light_speed_sphere);
+	std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
 
-		// We use a seed so that every scene will be the same for all lights,
-		// even though we are using random points.
-		std::mt19937 seed(light_speed_sphere);
-		std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
+	// Retrieve the values of the current light.
+	Vec3Df lightPosition = MyLightPositions[MyLightPositions.size() - 1];
+	float lightSphereWidth = MyLightPositionRadius[MyLightPositionRadius.size() - 1];
+	int lightSphereAmount = MyLightPositionAmount[MyLightPositionAmount.size() - 1];
 
-		// Retrieve the values of the current light.
-		Vec3Df lightPosition = MyLightPositions[i];
-		float lightSphereWidth = MyLightPositionRadius[i];
-		int lightSphereAmount = MyLightPositionAmount[i];
+	// Create the list of points.
+	std::vector<Vec3Df> currentLightSphere;
 
-		// Create the list of points.
-		std::vector<Vec3Df> currentLightSphere;
+	// We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
+	if (MyLightPositionAmount[MyLightPositionAmount.size() - 1] > 1 && MyLightPositionRadius[MyLightPositionRadius.size() - 1] > 0) {
 
-		// We only calculate the lightSphere if it is actually needed, else we just use the MyLightPositions.
-		if (MyLightPositionAmount[i] > 1 && MyLightPositionRadius[i] > 0) {
-
-			// Calculate position for every surface light.
-			for (int i = 0; i < lightSphereAmount; i++) {
-				double theta = 2 * M_PI * rndFloat(seed);
-				double phi = acos(1 - 2 * rndFloat(seed));
-				double x = lightPosition[0] + sin(phi) * cos(theta) * lightSphereWidth;
-				double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
-				double z = lightPosition[2] + cos(phi) * lightSphereWidth;
-				Vec3Df offset = Vec3Df(x, y, z);
-				currentLightSphere.push_back(offset);
-			}
+		// Calculate position for every surface light.
+		for (int i = 0; i < lightSphereAmount; i++) {
+			double theta = 2 * M_PI * rndFloat(seed);
+			double phi = acos(1 - 2 * rndFloat(seed));
+			double x = lightPosition[0] + sin(phi) * cos(theta) * lightSphereWidth;
+			double y = lightPosition[1] + sin(phi) * sin(theta) * lightSphereWidth;
+			double z = lightPosition[2] + cos(phi) * lightSphereWidth;
+			Vec3Df offset = Vec3Df(x, y, z);
+			MyLightPositions.push_back(offset);
 		}
-		else {
-			// We just add the normal light position.
-			currentLightSphere.push_back(lightPosition);
-		}
-
-		// We add list of points around the sphere into the list.
-		MySphereLightPositions.push_back(currentLightSphere);
 	}
+	else {
+		// We just add the normal light position.
+		MyLightPositions.push_back(lightPosition);
+	}
+	// We add list of points around the sphere into the list.
+	MySphereLightPositions.push_back(currentLightSphere);
 }
 
 /**
@@ -663,6 +705,87 @@ double intensityOfLight(const float &distance, const float &power, const float &
 	else {
 		return minimum;
 	}
+}
+
+/**
+ * Method to calculate the diffuse light.
+ *
+ * @param vertexPos the selected position.
+ * @param normal The normal.
+ * @param material The material.
+ * @param lightPos Our lightposition.
+ * @return The diffuse light.
+ */
+Vec3Df diffuseFunction(const Vec3Df &vertexPos, Vec3Df &normal, Material *material, Vec3Df lightPos) {
+
+	Vec3Df vectorLight = (lightPos - vertexPos);
+	vectorLight.normalize();
+	return material->Kd() * std::max(0.0f, Vec3Df::dotProduct(normal, vectorLight));
+
+}
+
+/**
+ * Method to calculate the specular light.
+ *
+ * @param vertexPosition the selected position.
+ * @param normal the normal.
+ * @param material the material.
+ * @param lightPosition the lightposition.
+ * @return The specular light.
+ */
+Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material *material, Vec3Df lightPosition) {
+
+	Vec3Df vectorView = vertexPosition - MyCameraPosition;
+	vectorView.normalize();
+
+	Vec3Df vectorLight = lightPosition - vertexPosition;
+	vectorLight.normalize();
+
+	normal.normalize();
+	Vec3Df reflection = vectorLight - 2 * (Vec3Df::dotProduct(normal, vectorLight)) * normal;
+	reflection.normalize();
+
+	float dotProduct = std::max(Vec3Df::dotProduct(vectorView, reflection), 0.0f);
+
+	// take the power
+	return material->Ks() * pow(dotProduct, material->Ns());
+
+}
+
+/**
+ * Method to calculate the shading.
+ *
+ * @param ray the ray.
+ * @param vertexPos  the vertex position.
+ * @param normal the normal.
+ * @param material the material.
+ * @return The shading on impact.
+ */
+Vec3Df calculateShading(const Vec3Df &vertexPosition, Vec3Df &normal, Material *material) {
+
+	// initially black
+	Vec3Df calculatedColor(0, 0, 0);
+
+	// Add the ambient shading
+	if (ambient && material->has_Ka()) {
+		calculatedColor = calculatedColor + material->Ka();
+	}
+
+	// Calculate the shading for every light source.
+	for (int i = 0; i < MyLightPositions.size(); i++) {
+
+		// Add the diffuse shading.
+		if (diffuse && material->has_Kd()) {
+			calculatedColor = calculatedColor + material->Tr() * diffuseFunction(vertexPosition, normal, material, MyLightPositions[i]);
+		}
+
+		// Add the specular shading.
+		if (specular && material->has_Ks() && material->has_Ns()) {
+			calculatedColor = calculatedColor + material->Tr() * specularFunction(vertexPosition, normal, material, MyLightPositions[i]);
+		}
+	}
+
+	return calculatedColor;
 }
 
 std::vector<Box>* getIntersectionBoxes(Ray r, Tree<Box>* curr)
@@ -811,7 +934,7 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 			//				{
 			//					std::cout << pointOfIntersection << std::endl;
 			//				}
-			Ray r = { rayOrigin, normRayDirection, false };
+			Ray r = { rayOrigin, normRayDirection };
 
 			if (rayIntersectionPointTriangle(r, *triangle, Triangle(), pointOfIntersection, distanceRay))
 			{
@@ -848,7 +971,6 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		Ray r;
 		r.origin = rayOrigin;
 		r.direction = rayDestination - rayOrigin;
-		r.insideMaterial = false;
 
 		// Splitting the tree
 		//tree.splitMiddle(4000);
@@ -874,7 +996,6 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		Ray r;
 		r.origin = rayOrigin;
 		r.direction = rayDestination - rayOrigin;
-		r.insideMaterial = false;
 
 		// Drawing the boxes
 		//showBoxes(&tree);
@@ -908,11 +1029,11 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 			MyLightPositionPower[MyLightPositionsPointer] = 0;
 		}
 		break;
-	case 'r':
+	case 'o':
 		MyLightPositionRadius[MyLightPositionsPointer] += .01f;
 		setupMySphereLightPositions();
 		break;
-	case 'R':
+	case 'O':
 		MyLightPositionRadius[MyLightPositionsPointer] -= .01f;
 		if (MyLightPositionRadius[MyLightPositionsPointer] < 0) {
 			MyLightPositionRadius[MyLightPositionsPointer] = 0;
@@ -936,7 +1057,9 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		break;
 	case 'q':
 	{
-		recurseTestRayCount = 0;
+		drawRecurseRays = true;
+
+		resetRecurseTestRays();
 
 		Ray recurseTestRay;
 
@@ -944,13 +1067,14 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 
 		recurseTestRay.origin = rayOrigin;
 		recurseTestRay.direction = normRayDirection;
-		recurseTestRay.insideMaterial = false;
 
 		std::cout << "Starting recursive raytrace..." << std::endl;
 
 		Trace(0, recurseTestRay, resultColor, Triangle());
 
 		std::cout << "Recursive ray trace done." << std::endl;
+
+		drawRecurseRays = false;
 	}
 	break;
 	default:
@@ -959,119 +1083,3 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 
 	std::cout << t << " pressed! The mouse was in location " << x << "," << y << "!" << std::endl;
 }
-
-
-//void BoxTree::splitMiddle(int minTriangles, int maxLevel)
-//{
-//	// reduces the boxsize to 'fit' the object (i.e. reduce the size of the boundingbox to the minimum required)
-//	if (data.triangles.size() > 0) {
-//		Vec3Df min = MyMesh.vertices[data.triangles[0].v[0]].p;
-//		Vec3Df max = MyMesh.vertices[data.triangles[0].v[0]].p;
-//		for (int z = 0; z < data.triangles.size(); z++)
-//		{
-//			for (int y = 0; y < 3; y++)
-//			{
-//				for (int x = 0; x < 3; x++)
-//				{
-//					if (MyMesh.vertices[data.triangles[z].v[y]].p[x] > max[x])
-//					{
-//						max[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
-//					}
-//					if (MyMesh.vertices[data.triangles[z].v[y]].p[x] < min[x])
-//					{
-//						min[x] = MyMesh.vertices[data.triangles[z].v[y]].p[x];
-//					}
-//				}
-//			}
-//		}
-//
-//		data = AABB(min, max);
-//	}
-//
-//	if (data.triangles.size() < minTriangles || level > maxLevel)
-//	{
-//		return;
-//	}
-//
-//	float edgeX = Vec3Df::squaredDistance(data.vertices_[4].p, data.vertices_[0].p);
-//	float edgeY = Vec3Df::squaredDistance(data.vertices_[2].p, data.vertices_[0].p);
-//	float edgeZ = Vec3Df::squaredDistance(data.vertices_[1].p, data.vertices_[0].p);
-//
-//	if (edgeX > edgeY && edgeX > edgeZ)
-//	{
-//		//	+------+
-//		//  |`.    |`.
-//		//  |  `3--X---7
-//		//  |   |  |   |
-//		//  0---+--+   |
-//		//   `. |   `. |
-//		//     `+------+
-//		Vec3Df midPoint = (data.vertices_[3].p + data.vertices_[7].p) / 2.0f;
-//		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
-//		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
-//
-//		//	+------+
-//		//  |`.    |`.
-//		//  |  `+--+---7
-//		//  |   |  |   |
-//		//  0---X--4   |
-//		//   `. |   `. |
-//		//     `+------+
-//		midPoint = (data.vertices_[0].p + data.vertices_[4].p) / 2.0f;
-//		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
-//		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
-//	}
-//	else if (edgeY > edgeX && edgeY > edgeZ)
-//	{
-//		//	+------+
-//		//  |`.    |`.
-//		//  |  `+------7
-//		//  |   |  |   |
-//		//  0---+--+   X
-//		//   `. |   `. |
-//		//     `+------6
-//		Vec3Df midPoint = (data.vertices_[6].p + data.vertices_[7].p) / 2.0f;
-//		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
-//		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
-//
-//		//	2------+
-//		//  |`.    |`.
-//		//  X  `+------7
-//		//  |   |  |   |
-//		//  0---+--+   |
-//		//   `. |   `. |
-//		//     `+------+
-//		midPoint = (data.vertices_[0].p + data.vertices_[2].p) / 2.0f;
-//		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
-//		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
-//
-//	}
-//	else
-//	{
-//		//	+------5
-//		//  |`.    |`X
-//		//  |  `+------7
-//		//  |   |  |   |
-//		//  0---+--+   |
-//		//   `. |   `. |
-//		//     `+------+
-//		Vec3Df midPoint = (data.vertices_[5].p + data.vertices_[7].p) / 2.0f;
-//		AABB leftNode = AABB(data.vertices_[0].p, midPoint);
-//		left = new BoxTree(leftNode, level+1); // Beware: Usage of "new"
-//
-//		//	+------+
-//		//  |`.    |`.
-//		//  |  `+--+---7
-//		//  |   |  |   |
-//		//  0---|--+   |
-//		//   `X |   `. |
-//		//     1+------+
-//		midPoint = (data.vertices_[0].p + data.vertices_[1].p) / 2.0f;
-//		AABB rightNode = AABB(midPoint, data.vertices_[7].p);
-//		right = new BoxTree(rightNode, level+1); // Beware: Usage of "new"
-//
-//	}
-//
-//	left->splitMiddle(minTriangles, maxLevel);
-//	right->splitMiddle(minTriangles, maxLevel);
-//}
