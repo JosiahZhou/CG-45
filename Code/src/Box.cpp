@@ -295,14 +295,9 @@ void Box::trim(const Mesh &mesh)
 // into its smallest form. The average vertex position of all the triangles is
 // calculated. The longest dimenention of the box is split in half and two
 // box are made using the new min and max vertices.
-std::pair<Box, Box> Box::split(const int & minTriangles, const Mesh &mesh)
+std::pair<Box, Box> Box::split(const Mesh &mesh)
 {
 	trim(mesh);
-
-	if (triangles.size() < minTriangles)
-	{
-		return std::pair<Box, Box>();
-	}
 
 	float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
 	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
