@@ -23,6 +23,8 @@ public:
 	void trim(const Mesh &mesh);
 
 	std::pair<Box, Box> split(const int & minTriangles, const Mesh &mesh);
+
+	std::pair<Box, Box> splitMiddle(const int & minTriangles, const Mesh &mesh);
 };
 
 #endif
