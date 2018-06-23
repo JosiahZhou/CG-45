@@ -257,3 +257,85 @@ std::pair<Box, Box> Box::split(const int & minTriangles, const Mesh &mesh)
 
 	return std::pair<Box, Box>(Box(min, newMax, mesh), Box(newMin, max, mesh));
 }
+
+// Returns two halves of a bounding box. The bounding box is first trimmed to
+// into its smallest form. The longest dimenention of the box is split in half and two
+// box are made using the middle vertices.
+std::pair<Box, Box> Box::splitMiddle(const int &minTriangles, const Mesh &mesh)
+{
+	trim(mesh);
+
+	if (triangles.size() < minTriangles)
+	{
+		return std::pair<Box, Box>();
+	}
+
+	float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
+	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
+	float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
+
+	Vec3Df newMin, newMax;;
+
+	if (edgeX > edgeY && edgeX > edgeZ)
+	{
+		//	+------+
+		//  |`.    |`.
+		//  |  `3--X---7
+		//  |   |  |   |
+		//  0---+--+   |
+		//   `. |   `. |
+		//     `+------+
+		newMin = (corners[3].p + corners[7].p) / 2.0f;
+
+		//	+------+
+		//  |`.    |`.
+		//  |  `+--+---7
+		//  |   |  |   |
+		//  0---X--4   |
+		//   `. |   `. |
+		//     `+------+
+		newMax = (corners[0].p + corners[4].p) / 2.0f;
+	}
+	else if (edgeY > edgeX && edgeY > edgeZ)
+	{
+		//	+------+
+		//  |`.    |`.
+		//  |  `+------7
+		//  |   |  |   |
+		//  0---+--+   X
+		//   `. |   `. |
+		//     `+------6
+		newMin = (corners[6].p + corners[7].p) / 2.0f;
+
+		//	2------+
+		//  |`.    |`.
+		//  X  `+------7
+		//  |   |  |   |
+		//  0---+--+   |
+		//   `. |   `. |
+		//     `+------+
+		newMax = (corners[0].p + corners[2].p) / 2.0f;
+	}
+	else
+	{
+		//	+------5
+		//  |`.    |`X
+		//  |  `+------7
+		//  |   |  |   |
+		//  0---+--+   |
+		//   `. |   `. |
+		//     `+------+
+		newMin = (corners[5].p + corners[7].p) / 2.0f;
+
+		//	+------+
+		//  |`.    |`.
+		//  |  `+--+---7
+		//  |   |  |   |
+		//  0---|--+   |
+		//   `X |   `. |
+		//     1+------+
+		newMax = (corners[0].p + corners[1].p) / 2.0f;
+	}
+
+	return std::pair<Box, Box>(Box(corners[0].p, newMax, mesh), Box(newMin, corners[7].p, mesh));
+}
