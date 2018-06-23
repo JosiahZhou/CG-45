@@ -3,6 +3,9 @@
 
 Box::Box(void) {}
 
+// Constructor for the Box class. The min and max of the mesh claculated.
+// Triangles from mashes are added to the box which have all 
+// of their vertices inside of the box.
 Box::Box(const Mesh &mesh)
 {
 	Vec3Df newMin = Vec3Df(INT32_MAX, INT32_MAX, INT32_MAX);
@@ -19,7 +22,85 @@ Box::Box(const Mesh &mesh)
 		newMax[2] = mesh.vertices[i].p[2] > newMax[2] ? mesh.vertices[i].p[2] : newMax[2];
 	}
 
-	Box(min, max, mesh);
+	this->min = newMin;
+	this->max = newMax;
+
+	//	+------+
+	//  |`.    |`.
+	//  |  `+--+---+
+	//  |   |  |   |
+	//  X---+--+   |
+	//   `. |   `. |
+	//     `+------+
+	this->corners.push_back(Vertex(Vec3Df(min[0], min[1], min[2])));
+
+	//	+------+
+	//  |`.    |`.
+	//  |  `+--+---+
+	//  |   |  |   |
+	//  X---+--+   |
+	//   `. |   `. |
+	//     `X------+
+	this->corners.push_back(Vertex(Vec3Df(min[0], min[1], max[2])));
+
+	//	X------+
+	//  |`.    |`.
+	//  |  `+--+---+
+	//  |   |  |   |
+	//  X---+--+   |
+	//   `. |   `. |
+	//     `X------+
+	this->corners.push_back(Vertex(Vec3Df(min[0], max[1], min[2])));
+
+	//	X------+
+	//  |`.    |`.
+	//  |  `X--+---+
+	//  |   |  |   |
+	//  X---+--+   |
+	//   `. |   `. |
+	//     `X------+
+	this->corners.push_back(Vertex(Vec3Df(min[0], max[1], max[2])));
+
+	//	X------+
+	//  |`.    |`.
+	//  |  `X--+---+
+	//  |   |  |   |
+	//  X---+--X   |
+	//   `. |   `. |
+	//     `X------+
+	this->corners.push_back(Vertex(Vec3Df(max[0], min[1], min[2])));
+
+	//	X------X
+	//  |`.    |`.
+	//  |  `X--+---+
+	//  |   |  |   |
+	//  X---+--X   |
+	//   `. |   `. |
+	//     `X------+
+	this->corners.push_back(Vertex(Vec3Df(max[0], max[1], min[2])));
+
+	//	X------X
+	//  |`.    |`.
+	//  |  `X--+---+
+	//  |   |  |   |
+	//  X---+--X   |
+	//   `. |   `. |
+	//     `X------X
+	this->corners.push_back(Vertex(Vec3Df(max[0], min[1], max[2])));
+
+	//	X------X
+	//  |`.    |`.
+	//  |  `X--+---X
+	//  |   |  |   |
+	//  X---+--X   |
+	//   `. |   `. |
+	//     `X------X
+	this->corners.push_back(Vertex(Vec3Df(max[0], max[1], max[2])));
+
+	for (int i = 0; i < mesh.triangles.size(); ++i)
+	{
+		this->triangles.push_back(&mesh.triangles[i]);
+	}
 }
 
 // Constructor for the Box class. The min and max vectors form a
@@ -187,8 +268,7 @@ void Box::trim(const Mesh &mesh)
 {
 	if (triangles.size() > 0)
 	{
-		Vec3Df newMin = 0;
-		Vec3Df newMax = 0;
+		Vec3Df newMin, newMax;
 		for (int i = 0; i < triangles.size(); ++i)
 		{
 			for (int y = 0; y < 3; y++)
@@ -228,7 +308,7 @@ std::pair<Box, Box> Box::split(const int & minTriangles, const Mesh &mesh)
 	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
 	float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
 
-	Vec3Df avg = 0;
+	Vec3Df avg;
 
 	for (int i = 0; i < triangles.size(); ++i)
 	{
