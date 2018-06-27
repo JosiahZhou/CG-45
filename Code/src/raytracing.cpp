@@ -47,7 +47,6 @@ BoxTree tree = BoxTree(AABB(), 0);
 // std::map<std::string, unsigned int> materialIndex;
 
 unsigned int maxRecursionLevel;
-unsigned int shadowCounter;
 
 void resetRecurseTestRays() {
 	for (int i = 0; i < 50; i++) {
@@ -68,7 +67,7 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("test_scene_1.obj", true);
+	MyMesh.loadMesh("boxCone.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -96,7 +95,7 @@ BoxTree initBoxTree()
 void initAccelerationStructure()
 {
 	//tree.splitMiddle(MyMesh.triangles.size()/4.0, 3);
-	tree.splitAvg(MyMesh.triangles.size()/4.0, 3);
+	tree.splitAvg(10000000000, 3);
 	showBoxes(&tree);
 	printTree(&tree, 0);
 }
@@ -144,10 +143,11 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 			}
 
 			if (intersect) {
-				if (isInShadow(foundIntersection, t)) {
+				int shadowpoints = 0;
+				if (isInShadow(foundIntersection, t, shadowpoints)) {
 					Vec3Df color = Vec3Df(1, 1, 1);
-					int light = MyLightPositions.size() - shadowCounter;
-					double weight = (double)shadowCounter / (double)MyLightPositions.size(); // percentage in shadow
+					int light = MyLightPositions.size() - shadowpoints;
+					double weight = (double)shadowpoints / (double)MyLightPositions.size(); // percentage in shadow
 					color = (1.0 - weight) * color;
 					//std::cout << "[IsInShadow] : color: " << color << std::endl;
 					return color; // shadow == black
@@ -202,7 +202,7 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 	return foundIntersection;
 }
 
-bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
+bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle, int & shadowpoints) {
 	int counter = 0;
 	bool shadow = false;
 	int x = 0;
@@ -249,7 +249,7 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 			return hitSomething;
 		}*/
 	}
-	shadowCounter = counter;
+	shadowpoints = counter;
 	return shadow;
 }
 
@@ -290,7 +290,7 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	directColor = Vec3Df(0,0,0);
 	reflectedColor = Vec3Df(0,0,0);
 	refractedColor = Vec3Df(0,0,0);
-
+	int shadowpoints = 0;
 	Ray reflectedRay, refractedRay;
 
 	bool computeDirect, computeReflect, computeRefract, computeSpecular;
@@ -1029,10 +1029,11 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		Triangle t;
 		Vec3Df intersection = DebugRay(testRayOrigin, testRayDestination, t);
 		testRayDestination = intersection;
+		int shadowpoints = 0;
 		/*std::cout << "Intersection Point: " << testRayDestination <<std::endl;
 		std::cout << "Intersection Point: " << intersection <<std::endl;*/
 
-		if (isInShadow(intersection, t)) {
+		if (isInShadow(intersection, t, shadowpoints)) {
 			std::cout << "Intersection lies in the : SHADOW" << std::endl;
 
 		}

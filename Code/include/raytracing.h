@@ -52,7 +52,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest);
 // Debug Ray
 Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t);
 //Shadow test
-bool isInShadow(Vec3Df & intersection, Triangle & triangle);
+bool isInShadow(Vec3Df & intersection, Triangle & triangle, int & shadowpoints);
 //a function to debug --- you can draw in OpenGL here
 void yourDebugDraw();
 
