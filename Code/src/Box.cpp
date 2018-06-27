@@ -183,11 +183,11 @@ Box::Box(const Vec3Df min, const Vec3Df max, const Mesh &mesh)
 	//     `X------X
 	this->corners.push_back(Vertex(Vec3Df(max[0], max[1], max[2])));
 
-	for (int i = 0; i < mesh.vertices.size(); ++i)
+	for (int i = 0; i < mesh.triangles.size(); ++i)
 	{
 		if (contains(mesh.vertices[mesh.triangles[i].v[0]])
-			&& contains(mesh.vertices[mesh.triangles[i].v[1]])
-			&& contains(mesh.vertices[mesh.triangles[i].v[2]]))
+			|| contains(mesh.vertices[mesh.triangles[i].v[1]])
+			|| contains(mesh.vertices[mesh.triangles[i].v[2]]))
 		{
 			this->triangles.push_back(&mesh.triangles[i]);
 		}
@@ -268,20 +268,25 @@ void Box::trim(const Mesh &mesh)
 {
 	if (triangles.size() > 0)
 	{
-		Vec3Df newMin, newMax;
+		Vec3Df newMin = Vec3Df(min[0], min[1], min[2]);
+		Vec3Df newMax = Vec3Df(max[0], max[1], max[2]);
 		for (int i = 0; i < triangles.size(); ++i)
 		{
 			for (int y = 0; y < 3; y++)
 			{
 				for (int x = 0; x < 3; x++)
 				{
-					if (mesh.vertices[triangles[i]->v[y]].p[x] > newMax[x])
+					if (withinBoxFull(*triangles[i], mesh))
 					{
-						newMax[x] = mesh.vertices[triangles[i]->v[y]].p[x];
-					}
-					if (mesh.vertices[triangles[i]->v[y]].p[x] < newMin[x])
-					{
-						newMin[x] = mesh.vertices[triangles[i]->v[y]].p[x];
+
+						if (mesh.vertices[triangles[i]->v[y]].p[x] > newMax[x])
+						{
+							newMax[x] = mesh.vertices[triangles[i]->v[y]].p[x];
+						}
+						if (mesh.vertices[triangles[i]->v[y]].p[x] < newMin[x])
+						{
+							newMin[x] = mesh.vertices[triangles[i]->v[y]].p[x];
+						}
 					}
 				}
 			}
@@ -290,6 +295,24 @@ void Box::trim(const Mesh &mesh)
 		this->max = newMax;
 	}
 }
+
+bool Box::withinBoxFull(const Triangle t, const Mesh &MyMesh)
+{
+	for (int i = 0; i < 3; i++)
+	{
+		// if vertex is not in box then we consider the triangle outside of the box
+		if (!(MyMesh.vertices[t.v[i]].p[0] >= corners[0].p[0] && MyMesh.vertices[t.v[i]].p[0] <= corners[7].p[0] &&
+			MyMesh.vertices[t.v[i]].p[1] >= corners[0].p[1] && MyMesh.vertices[t.v[i]].p[1] <= corners[7].p[1] &&
+			MyMesh.vertices[t.v[i]].p[2] >= corners[0].p[2] && MyMesh.vertices[t.v[i]].p[2] <= corners[7].p[2]))
+		{
+			return false;
+		}
+	}
+
+	// all vertices are in the box
+	return true;
+}
+
 
 // Returns two halves of a bounding box. The bounding box is first trimmed to
 // into its smallest form. The average vertex position of all the triangles is
@@ -303,7 +326,7 @@ std::pair<Box, Box> Box::split(const Mesh &mesh)
 	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
 	float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
 
-	Vec3Df avg;
+	Vec3Df avg = Vec3Df(0.0f, 0.0f, 0.0f);
 
 	for (int i = 0; i < triangles.size(); ++i)
 	{
@@ -325,12 +348,18 @@ std::pair<Box, Box> Box::split(const Mesh &mesh)
 		edge = 1;
 	}
 
-	Vec3Df newMin = min;
-	Vec3Df newMax = max;
+	Vec3Df oldMin = Vec3Df(min[0], min[1], min[2]);
+	Vec3Df oldMax = Vec3Df(max[0], max[1], max[2]);
+
+	Vec3Df newMin = Vec3Df(min[0], min[1], min[2]);
+	Vec3Df newMax = Vec3Df(max[0], max[1], max[2]);
 	newMin[edge] = avg[edge];
 	newMax[edge] = avg[edge];
 
-	return std::pair<Box, Box>(Box(min, newMax, mesh), Box(newMin, max, mesh));
+	if (oldMin == newMin || oldMax == newMax)
+		std::cout << "HEHEHE" << std::endl;
+
+	return std::pair<Box, Box>(Box(oldMin, newMax, mesh), Box(newMin, oldMax, mesh));
 }
 
 // Returns two halves of a bounding box. The bounding box is first trimmed to

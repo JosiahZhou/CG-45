@@ -65,7 +65,7 @@ void init()
 	MyMesh.computeVertexNormals();
 
 	root = new Tree<Box>(Box(MyMesh));
-	root->split(MyMesh.triangles.size() / 4.0, MyMesh);
+	root->split(4000, MyMesh);
 	root->print(0);
 
 	//one first move: initialize the first light source
@@ -638,6 +638,8 @@ void yourDebugDraw()
 	//{
 	//	box.highlightEdges();
 	//}
+
+	root->highlightEdges();
 
 	for (int i = 0; i < 20; i++) {
 		drawRay(recurseTestRayOrigins[i], recurseTestRayDestinations[i], Vec3Df(0, 1, 0));
