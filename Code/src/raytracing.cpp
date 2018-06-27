@@ -67,7 +67,7 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("boxCone.obj", true);
+	MyMesh.loadMesh("box.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -144,7 +144,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 
 			if (intersect) {
 				int shadowpoints = 0;
-				if (isInShadow(foundIntersection, t, shadowpoints)) {
+				if (isInShadow(foundIntersection, shadowpoints)) {
 					Vec3Df color = Vec3Df(1, 1, 1);
 					int light = MyLightPositions.size() - shadowpoints;
 					double weight = (double)shadowpoints / (double)MyLightPositions.size(); // percentage in shadow
@@ -202,7 +202,7 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 	return foundIntersection;
 }
 
-bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle, int & shadowpoints) {
+bool isInShadow(Vec3Df & intersection, int & shadowpoints) {
 	int counter = 0;
 	bool shadow = false;
 	int x = 0;
@@ -359,11 +359,18 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	}
 
 	if (computeDirect) ComputeDirectLight(intersect, directColor);
+	
+	//if()
 
 	if ((computeReflect || computeSpecular) && level + 1 <= maxRecursionLevel) {
 		if (ComputeReflectedRay(origRay, intersect.point, intersect.triangle, reflectedRay)) {
 			if (computeReflect) Trace(level + 1, reflectedRay, reflectedColor, intersect.triangle);
-			if (computeSpecular) BounceLight(reflectedRay, specularLuminance, intersect.triangle);
+			if (computeSpecular) {
+				Vec3Df normal = calculateSurfaceNormal(intersect.triangle);
+				
+				specularLuminance = specularFunction(intersect.point, normal, intersect.material);
+				//BounceLight(reflectedRay, specularLuminance, intersect.triangle);
+			}
 		}
 	}
 
@@ -380,7 +387,7 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 }
 
 void BounceLight(Ray ray, Vec3Df& luminance, Triangle ignoreTriangle) {
-	// TODO
+	//specularFunction()
 	luminance = Vec3Df(0,0,0);
 }
 
@@ -411,7 +418,7 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 }
 
 void ComputeDirectLight(Intersection intersect, Vec3Df& directColor) {
-	// if (isInShadow(pointOfIntersection, Triangle())) {
+	// if (isInShadow(pointOfIntersection, 0)) {
 	 	directColor = Vec3Df(1,1,1); // Hard shadow, item is in the shadow thus color is black
 	// }
 
@@ -769,23 +776,26 @@ Vec3Df diffuseFunction(const Vec3Df &vertexPos, Vec3Df &normal, Material *materi
  * @param lightPosition the lightposition.
  * @return The specular light.
  */
-Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material *material, Vec3Df lightPosition) {
+Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material material) {
+	double specularWeight = 1.0 / MyLightPositions.size();
+	Vec3Df toreturn = Vec3Df(0, 0, 0);
+	for (Vec3Df light : MyLightPositions) {
+		Vec3Df vectorView = vertexPosition - MyCameraPosition;
+		vectorView.normalize();
 
-    Vec3Df vectorView = vertexPosition - MyCameraPosition;
-    vectorView.normalize();
+		Vec3Df vectorLight = light - vertexPosition;
+		vectorLight.normalize();
 
-    Vec3Df vectorLight = lightPosition - vertexPosition;
-    vectorLight.normalize();
+		normal.normalize();
+		Vec3Df reflection = vectorLight - 2 * (Vec3Df::dotProduct(normal, vectorLight)) * normal;
+		reflection.normalize();
 
-    normal.normalize();
-    Vec3Df reflection = vectorLight - 2 * (Vec3Df::dotProduct(normal, vectorLight)) * normal;
-    reflection.normalize();
+		float dotProduct = std::max(Vec3Df::dotProduct(vectorView, reflection), 0.0f);
 
-    float dotProduct = std::max(Vec3Df::dotProduct(vectorView, reflection), 0.0f);
-
-    // take the power
-    return material->Ks() * pow(dotProduct, material->Ns());
-
+		// take the power
+		toreturn = toreturn + specularWeight * ( material.Ks() * pow(dotProduct, material.Ns()));
+	}
+	return toreturn;
 }
 
 /**
@@ -802,24 +812,24 @@ Vec3Df calculateShading(const Vec3Df &vertexPosition, Vec3Df &normal, Material *
     // initially black
     Vec3Df calculatedColor(0, 0, 0);
 
-    // Add the ambient shading
-    if (ambient && material->has_Ka()) {
-        calculatedColor = calculatedColor + material->Ka();
-    }
+    //// Add the ambient shading
+    //if (ambient && material->has_Ka()) {
+    //    calculatedColor = calculatedColor + material->Ka();
+    //}
 
-    // Calculate the shading for every light source.
-    for (int i = 0; i < MyLightPositions.size(); i++) {
+    //// Calculate the shading for every light source.
+    //for (int i = 0; i < MyLightPositions.size(); i++) {
 
-        // Add the diffuse shading.
-        if (diffuse && material->has_Kd()) {
-            calculatedColor = calculatedColor + material->Tr() * diffuseFunction(vertexPosition, normal, material, MyLightPositions[i]);
-        }
+    //    // Add the diffuse shading.
+    //    if (diffuse && material->has_Kd()) {
+    //        calculatedColor = calculatedColor + material->Tr() * diffuseFunction(vertexPosition, normal, material, MyLightPositions[i]);
+    //    }
 
-        // Add the specular shading.
-        if (specular && material->has_Ks() && material->has_Ns()) {
-            calculatedColor = calculatedColor + material->Tr() * specularFunction(vertexPosition, normal, material, MyLightPositions[i]);
-        }
-    }
+    //    // Add the specular shading.
+    //    if (specular && material->has_Ks() && material->has_Ns()) {
+    //        calculatedColor = calculatedColor + material->Tr() * specularFunction(vertexPosition, normal, material, MyLightPositions[i]);
+    //    }
+    //}
 
     return calculatedColor;
 }
@@ -1033,7 +1043,7 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		/*std::cout << "Intersection Point: " << testRayDestination <<std::endl;
 		std::cout << "Intersection Point: " << intersection <<std::endl;*/
 
-		if (isInShadow(intersection, t, shadowpoints)) {
+		if (isInShadow(intersection, shadowpoints)) {
 			std::cout << "Intersection lies in the : SHADOW" << std::endl;
 
 		}

@@ -52,7 +52,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest);
 // Debug Ray
 Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t);
 //Shadow test
-bool isInShadow(Vec3Df & intersection, Triangle & triangle, int & shadowpoints);
+bool isInShadow(Vec3Df & intersection, int & shadowpoints);
 //a function to debug --- you can draw in OpenGL here
 void yourDebugDraw();
 
@@ -73,7 +73,7 @@ bool ComputeRefractedRay(Ray origRay, Intersection intersect, Ray& refractedRay)
 void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle);
 void BounceLight(Ray ray, Vec3Df& luminance, Triangle ignoreTriangle);
 bool Intersect(unsigned int level, const Ray ray, Vec3Df& pointOfIntersection, Triangle& triangleOfIntersection, Triangle ignoreTriangle, float& distance);
-
+Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material material);
 // Prints the BoxTree in directory-format
 void printTree(struct BoxTree* curr, int depth);
 
