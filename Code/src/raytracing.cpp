@@ -634,10 +634,7 @@ void yourDebugDraw()
 	glPopAttrib();
 
 	// draw the bounding boxes
-	//for (Box box : root->getBoxes())
-	//{
-	//	box.highlightEdges();
-	//}
+	root->highlightEdges();
 
 	for (int i = 0; i < 20; i++) {
 		drawRay(recurseTestRayOrigins[i], recurseTestRayDestinations[i], Vec3Df(0, 1, 0));
