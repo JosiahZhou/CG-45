@@ -33,8 +33,6 @@ void Tree<Box>::split(const int &minTriangles, const Mesh &mesh)
 	this->left = new Tree<Box>(boxes.first);
 	this->right = new Tree<Box>(boxes.second);
 
-	std::cout << data.triangles.size() << std::endl;
-
 	this->left->split(minTriangles, mesh);
 	this->right->split(minTriangles, mesh);
 }

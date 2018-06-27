@@ -634,10 +634,7 @@ void yourDebugDraw()
 	glPopAttrib();
 
 	// draw the bounding boxes
-	//for (Box box : root->getBoxes())
-	//{
-	//	box.highlightEdges();
-	//}
+	root->highlightEdges();
 
 	root->highlightEdges();
 
