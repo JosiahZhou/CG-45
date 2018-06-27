@@ -267,6 +267,7 @@ void keyboard(unsigned char key, int x, int y)
 				Ray ray = { origin, dir };
 
 				Vec3Df rgb = Vec3Df(0, 0, 0);
+				//rgb = performRayTracing(ray.origin, dest);
 				Trace(0, ray, rgb, Triangle());
 				//store the result in an image
 				result.setPixel(x, y, RGBValue(rgb[0], rgb[1], rgb[2]));
