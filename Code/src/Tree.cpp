@@ -73,7 +73,12 @@ std::vector<Box>* Tree<Box>::getLeaves(void)
 void Tree<Box>::highlightEdges(void)
 {
 	this->data.highlightEdges();
-	if (left == NULL) return;
-	this->left->highlightEdges();
-	this->right->highlightEdges();
+	if (left != NULL)
+	{
+		this->left->highlightEdges();
+	}
+	if (right != NULL)
+	{
+		this->right->highlightEdges();
+	}
 }
