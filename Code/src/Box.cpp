@@ -8,10 +8,10 @@ Box::Box(void) {}
 // of their vertices inside of the box.
 Box::Box(const Mesh &mesh)
 {
-	Vec3Df newMin = Vec3Df(INT32_MAX, INT32_MAX, INT32_MAX);
-	Vec3Df newMax = Vec3Df(INT32_MIN, INT32_MIN, INT32_MIN);
+	Vec3Df newMin = Vec3Df(FLT_MAX, FLT_MAX, FLT_MAX);
+	Vec3Df newMax = Vec3Df(FLT_MIN, FLT_MIN, FLT_MIN);
 
-	for (int i = 0; i < mesh.vertices.size(); i++)
+	for (int i = 0; i < mesh.vertices.size(); ++i)
 	{
 		newMin[0] = mesh.vertices[i].p[0] < newMin[0] ? mesh.vertices[i].p[0] : newMin[0];
 		newMin[1] = mesh.vertices[i].p[1] < newMin[1] ? mesh.vertices[i].p[1] : newMin[1];
@@ -185,9 +185,9 @@ Box::Box(const Vec3Df min, const Vec3Df max, const Mesh &mesh)
 
 	for (int i = 0; i < mesh.vertices.size(); ++i)
 	{
-		if (contains(mesh.vertices[mesh.triangles[i].v[0]])
-			&& contains(mesh.vertices[mesh.triangles[i].v[1]])
-			&& contains(mesh.vertices[mesh.triangles[i].v[2]]))
+		if (this->contains(mesh.vertices[mesh.triangles[i].v[0]])
+			&& this->contains(mesh.vertices[mesh.triangles[i].v[1]])
+			&& this->contains(mesh.vertices[mesh.triangles[i].v[2]]))
 		{
 			this->triangles.push_back(&mesh.triangles[i]);
 		}
@@ -268,7 +268,8 @@ void Box::trim(const Mesh &mesh)
 {
 	if (triangles.size() > 0)
 	{
-		Vec3Df newMin, newMax;
+		Vec3Df newMin = this->min;
+		Vec3Df newMax = this->max;
 		for (int i = 0; i < triangles.size(); ++i)
 		{
 			for (int y = 0; y < 3; y++)
