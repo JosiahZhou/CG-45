@@ -40,7 +40,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${INCLUDE_DIR})
 
 # Required OpenMP
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 include(FindOpenMP)
 if(OPENMP_FOUND)
