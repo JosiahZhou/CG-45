@@ -43,12 +43,18 @@ int rec[1000006];
 // TODO: fix this
 void Tree<Box>::print(const int depth)
 {
-	if (this == NULL) return;
-
+	int i;
+	if (this == NULL)return;
+	printf("\t");
+	for (i = 0; i < depth; i++)
+		if (i == depth - 1)
+			printf("%s---", rec[depth - 1] ? "|" : "|");
+		else
+			printf("%s   ", rec[i] ? "|" : "  ");
 	printf("%ld\n", this->data.triangles.size());
-	printf("|      ");
-
+	rec[depth] = 1;
 	this->right->print(depth + 1);
+	rec[depth] = 0;
 	this->left->print(depth + 1);
 }
 
