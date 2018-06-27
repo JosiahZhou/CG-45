@@ -136,6 +136,8 @@ public:
 
 	//triangles residing inside the bounding box
 	std::vector<Triangle> triangles;
+
+	std::vector<unsigned int> materials;
 };
 
 /**********************************************************************************************

@@ -256,29 +256,54 @@ bool isInShadow(Vec3Df & intersection, int & shadowpoints) {
 // returns whether the ray hit something or not
 bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Triangle ignoreTriangle) {
 	// if (level > maxRecursionLevel) return false;
-
 	intersect.distance = INFINITY;
 
 	// trace the ray through all the triangles, optimization structure needs to go here still
-	for (int i = 0; i < MyMesh.triangles.size(); i++) {
-		Vec3Df intersectionPoint;
-		float distance;
-		Triangle triangle = MyMesh.triangles[i];
-		// if an intersection gets found, put the resulting point and triangle in the result vars
-		if (rayIntersectionPointTriangle(ray, triangle, ignoreTriangle, intersectionPoint, distance)) {
-			// check if distance is smaller than previous result and larger than zero
-			if (distance < intersect.distance && distance > 0) {
-				intersect.point = intersectionPoint;
-				intersect.triangle = triangle;
-				intersect.distance = distance;
-				intersect.material = MyMesh.materials[MyMesh.triangleMaterials[i]];
 
-				Vec3Df n = calculateSurfaceNormal(triangle);
-				n.normalize();
+	//Vec3Df direction = dest - origin;
+	Vec3Df foundIntersection;
 
-				intersect.schlickCosTheta = fabs(Vec3Df::dotProduct(n, ray.direction));
+	bool intersectionBool;
+
+	Vec3Df pin, pout;
+	if (rayIntersectionPointBox(ray, tree.data, pin, pout)) {
+		std::stack<BoxTree> s;
+		s.push(*getFirstIntersectedBoxFast(ray, &tree, pin, pout));
+
+		while (!s.empty())
+		{
+			intersectionBool = false;
+			BoxTree Btree = s.top();
+			AABB box = Btree.data;
+			s.pop();
+			for (int i = 0; i < box.triangles.size(); i++)
+			{
+				Vec3Df intersectionPoint;
+				float distance;
+				Triangle triangle = box.triangles[i];
+				// if an intersection gets found, put the resulting point and triangle in the result vars
+				if (rayIntersectionPointTriangle(ray, triangle, ignoreTriangle, intersectionPoint, distance)) {
+					// check if distance is smaller than previous result and larger than zero
+					intersectionBool = true;
+					if (distance < intersect.distance && distance > 0) {
+						intersect.point = intersectionPoint;
+						intersect.triangle = triangle;
+						intersect.distance = distance;
+						intersect.material = MyMesh.materials[box.materials[i]];
+
+						Vec3Df n = calculateSurfaceNormal(triangle);
+						n.normalize();
+
+						intersect.schlickCosTheta = fabs(Vec3Df::dotProduct(n, ray.direction));
+					}
+				}
+			}
+			if (!intersectionBool) {
+				if (Btree.parent != NULL)
+				s.push(*Btree.parent);
 			}
 		}
+
 	}
 
 	if (intersect.distance < 1000000) return true;
@@ -360,7 +385,24 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 
 	if (computeDirect) ComputeDirectLight(intersect, directColor);
 	
-	//if()
+	if (false) {
+		//if (intersect) {
+		//	int shadowpoints = 0;
+		//	if (isInShadow(foundIntersection, shadowpoints)) {
+		//		Vec3Df color = Vec3Df(1, 1, 1);
+		//		int light = MyLightPositions.size() - shadowpoints;
+		//		double weight = (double)shadowpoints / (double)MyLightPositions.size(); // percentage in shadow
+		//		color = (1.0 - weight) * color;
+		//		//std::cout << "[IsInShadow] : color: " << color << std::endl;
+		//		return color; // shadow == black
+		//	}
+		//	else {
+		//		// color and other stuff here as well...
+		//		return Vec3Df(1, 1, 1); // light == white
+
+		//	}
+		//}
+	}
 
 	if ((computeReflect || computeSpecular) && level + 1 <= maxRecursionLevel) {
 		if (ComputeReflectedRay(origRay, intersect.point, intersect.triangle, reflectedRay)) {
@@ -385,7 +427,7 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 
 	return;
 }
-
+// This function is obsolete, the functionality is already implemented in anoter function see specularFuntion()
 void BounceLight(Ray ray, Vec3Df& luminance, Triangle ignoreTriangle) {
 	//specularFunction()
 	luminance = Vec3Df(0,0,0);
@@ -1186,6 +1228,7 @@ AABB::AABB()
 	vertices_ = std::vector<Vertex>();
 	sides_ = std::vector<std::pair<Vec3Df, Vec3Df>>();
 	triangles = std::vector<Triangle>();
+	materials = std::vector<unsigned int>();
 }
 
 AABB::AABB(const Vec3Df min, const Vec3Df max)
@@ -1194,6 +1237,7 @@ AABB::AABB(const Vec3Df min, const Vec3Df max)
 	vertices_ = std::vector<Vertex>();
 	sides_ = std::vector<std::pair<Vec3Df, Vec3Df>>();
 	triangles = std::vector<Triangle>();
+	materials = std::vector<unsigned int>();
 
 	//	+------+
 	//  |`.    |`.
@@ -1293,6 +1337,7 @@ AABB::AABB(const Vec3Df min, const Vec3Df max)
 		if (withinBox(MyMesh.triangles[i]))
 		{
 			triangles.push_back(MyMesh.triangles[i]);
+			materials.push_back(MyMesh.triangleMaterials[i]);
 		}
 	}
 }
