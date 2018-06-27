@@ -13,7 +13,7 @@ extern Mesh MyMesh; //Main mesh
 extern std::vector<Vec3Df> MyLightPositions;
 extern std::vector<int> MyLightPositionAmount;
 extern std::vector<float> MyLightPositionRadius;
-extern std::vector<int> MyLightPositionPower;
+extern std::vector<float> MyLightPositionPower;
 extern std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 extern Vec3Df MyCameraPosition; //currCamera
 extern unsigned int WindowSize_X;//window resolution width
@@ -99,7 +99,7 @@ BoxTree* getFirstIntersectedBoxFast(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& p
 void getAllIntersectedLeafs(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout, std::vector<AABB> &intersections);
 
 // calculate the intensity of light
-double intensityOfLight(const float &distance, const float &power, const float &minimum);
+float intensityOfLight(const float &distance, const float &power, const float &minimum);
 
 Vec3Df calculateSurfaceNormal(Triangle triangle);
 Vec3Df calculateCentroid(const Triangle t);

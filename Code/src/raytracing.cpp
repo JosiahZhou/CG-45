@@ -77,7 +77,10 @@ void init()
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
 	//here, we set it to the current location of the camera
-	MyLightPositions.push_back(MyCameraPosition);
+	MyLightPositions.push_back(Vec3Df(0.25,1,0));
+	MyLightPositionPower.push_back(150.0f);
+	MyLightPositions.push_back(Vec3Df(-0.25,1,0));
+	MyLightPositionPower.push_back(150.0f);
 
 	maxRecursionLevel = 5;
 	recurseTestRayCount = 0;
@@ -202,6 +205,58 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 	return foundIntersection;
 }
 
+Vec3Df getLit(Vec3Df origin, Triangle ignoreTriangle) {
+	Vec3Df intensity = Vec3Df(0,0,0);
+
+	for (unsigned int x = 0; x < MyLightPositions.size(); x++) {
+		Vec3Df dest = MyLightPositions[x];
+		float power = MyLightPositionPower[x];
+
+		Triangle foundTriangle;
+		float minDist = INFINITY;
+		/*********************************************************/
+		// Copied code from performRayTracing
+		/*********************************************************/
+		Vec3Df direction = dest - origin;
+		float lightIntersectDist = direction.getLength();
+		direction.normalize();
+
+		origin = origin + 0.001f * direction;
+		Ray ray;
+		ray.origin = origin;
+		ray.direction = direction;
+
+		// TODO: make this efficient
+		Vec3Df pin, pout;
+		if (rayIntersectionPointBox(ray, tree.data, pin, pout))
+		{
+			AABB box = tree.data;
+			for (int i = 0; i < box.triangles.size(); i++) {
+				Vec3Df intersect;
+				float distanceRay;
+				Triangle triangle = box.triangles[i];
+				// if an intersection gets found, put the resulting point and triangle in the result vars
+				if (rayIntersectionPointTriangle(ray, triangle, ignoreTriangle, intersect, distanceRay)) {
+					if (distanceRay > 0 && distanceRay < lightIntersectDist) {
+						goto nextsource;
+					}
+				}
+			}
+		}
+
+		{
+			Vec3Df triangleNormal = calculateSurfaceNormal(ignoreTriangle);
+			triangleNormal.normalize();
+			intensity += Vec3Df(1,1,1)*intensityOfLight(lightIntersectDist, power, 0.0f)*fabs(Vec3Df::dotProduct(triangleNormal, direction));
+		}
+
+		nextsource:
+			;
+	}
+
+	return intensity;
+}
+
 bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 	int counter = 0;
 	bool shadow = false;
@@ -279,6 +334,11 @@ bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Trian
 				intersect.schlickCosTheta = fabs(Vec3Df::dotProduct(n, ray.direction));
 			}
 		}
+	}
+
+	if (intersect.distance < 1000000 && level == 0 && drawRecurseRays) {
+		Vec3Df intensity = getLit(intersect.point, intersect.triangle);
+		std::cout << "Intensity at point " << intersect.point << " is " << intensity << std::endl;
 	}
 
 	if (intersect.distance < 1000000) return true;
@@ -374,6 +434,10 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	// TODO: figure out proper mirrorReflectance/specular usage, both should be handled differently
 	color = diffuseContribution*intersect.material.Kd()*directColor + specularLuminance*intersect.material.Ks() + mirrorReflectance*reflectedColor + glassRefractance*refractedColor;
 
+	for (unsigned int i=0; i < 3; i++) {
+		if (color.p[i] > 1.0) color.p[i] = 1.0f;
+	}
+
 	if (drawRecurseRays && level == 0) std::cout << "Got color " << color << " from level " << level << std::endl;
 
 	return;
@@ -412,7 +476,7 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 
 void ComputeDirectLight(Intersection intersect, Vec3Df& directColor) {
 	// if (isInShadow(pointOfIntersection, Triangle())) {
-	 	directColor = Vec3Df(1,1,1); // Hard shadow, item is in the shadow thus color is black
+	directColor = getLit(intersect.point, intersect.triangle); // Hard shadow, item is in the shadow thus color is black
 	// }
 
 	/*
@@ -697,9 +761,12 @@ void setupMySphereLightPositions() {
         std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
 
         // Retrieve the values of the current light.
-        Vec3Df lightPosition = MyLightPositions[MyLightPositions.size()-1];
-        float lightSphereWidth = MyLightPositionRadius[MyLightPositionRadius.size()-1];
-        int lightSphereAmount = MyLightPositionAmount[MyLightPositionAmount.size()-1];
+        Vec3Df lightPosition = MyLightPositions.back();
+		MyLightPositions.pop_back();
+        float lightSphereWidth = MyLightPositionRadius.back();
+        int lightSphereAmount = MyLightPositionAmount.back();
+		float lightPower = MyLightPositionPower.back();
+		MyLightPositionPower.pop_back();
 
         // Create the list of points.
         std::vector<Vec3Df> currentLightSphere;
@@ -716,6 +783,7 @@ void setupMySphereLightPositions() {
                 double z = lightPosition[2] + cos(phi) * lightSphereWidth;
                 Vec3Df offset = Vec3Df(x, y, z);
                 MyLightPositions.push_back(offset);
+				MyLightPositionPower.push_back(lightPower/lightSphereAmount);
             }
         } else {
             // We just add the normal light position.
@@ -733,7 +801,7 @@ void setupMySphereLightPositions() {
  * @param minimum the minimum intensity of the light.
  * @return the intensity of the light between the object and the light.
  */
-double intensityOfLight(const float &distance, const float &power, const float &minimum) {
+float intensityOfLight(const float &distance, const float &power, const float &minimum) {
 	double intensity = 1 / (4 * M_PI * distance * distance * (1 / power) + 1);
 	if (intensity > minimum) {
 		return intensity;
@@ -1136,30 +1204,51 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		}
 		break;
 	case 'q':
-	{
-		drawRecurseRays = true;
+		{
+			drawRecurseRays = true;
 
-		resetRecurseTestRays();
+			resetRecurseTestRays();
 
-		Ray recurseTestRay;
+			Ray recurseTestRay;
 
-		Vec3Df resultColor;
+			Vec3Df resultColor;
 
-		recurseTestRay.origin = rayOrigin;
-		recurseTestRay.direction = normRayDirection;
+			recurseTestRay.origin = rayOrigin;
+			recurseTestRay.direction = normRayDirection;
 
-		std::cout << "Starting recursive raytrace..." << std::endl;
+			std::cout << "Starting recursive raytrace..." << std::endl;
 
-		Trace(0, recurseTestRay, resultColor, Triangle());
+			Trace(0, recurseTestRay, resultColor, Triangle());
 
-		std::cout << "Recursive ray trace done." << std::endl;
+			std::cout << "Recursive ray trace done." << std::endl;
 
-		drawRecurseRays = false;
-	}
-	break;
+			drawRecurseRays = false;
+		}
+		break;
+	case 'Q':
+		{
+			std::cout << "MyLightPositions: (" << MyLightPositions.size() << ")" << std::endl;
+			for (Vec3Df l : MyLightPositions) {
+				std::cout << l << std::endl;
+			}
+			std::cout << "MyLightPositionAmount: " << std::endl;
+			for (int i : MyLightPositionAmount) {
+				std::cout << i << std::endl;
+			}
+			std::cout << "MyLightPositionRadius: " << std::endl;
+			for (float f : MyLightPositionRadius) {
+				std::cout << f << std::endl;
+			}
+			std::cout << "MyLightPositionPower: (" << MyLightPositionPower.size() << ")" << std::endl;
+			for (int i : MyLightPositionPower) {
+				std::cout << i << std::endl;
+			}
+		}
+		break;
 	default:
 		break;
 	}
+
 
 	std::cout << t << " pressed! The mouse was in location " << x << "," << y << "!" << std::endl;
 }
