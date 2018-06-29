@@ -152,6 +152,7 @@ public:
 	void splitMiddle(int minTriangles, int maxLevel);
 	void splitAvg(int minTriangles, int maxLevel);
 
+	bool intersected = false;
 	AABB data;
 	BoxTree *parent = NULL;
 	BoxTree *left = NULL;

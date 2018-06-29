@@ -247,7 +247,7 @@ void keyboard(unsigned char key, int x, int y)
 
 		float doneLines = 0.0f;
 		//openMP runs this for loop in parallel.
-		#pragma omp parallel for ordered schedule(dynamic)
+		//#pragma omp parallel for ordered schedule(dynamic)
 		for (int y = 0; y < WindowSize_Y; ++y) {
 			for (int x = 0; x < WindowSize_X; ++x)
 			{
