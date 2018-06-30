@@ -21,10 +21,6 @@
 #include <stack>
 
 int light_speed_sphere = 12391;
-bool diffuse = true;
-bool specular = true;
-bool ambient = true;
-bool shading = true;
 
 //temporary variables
 //these are only used to illustrate
@@ -887,12 +883,6 @@ Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material m
 		toreturn = toreturn + specularWeight * ( material.Ks() * pow(dotProduct, material.Ns()));
 	}
 	return toreturn;
-}
-
-Vec3Df calculateShading(const Vec3Df &vertexPosition, Vec3Df &normal, Material *material) {
-    // initially black
-    Vec3Df calculatedColor(0, 0, 0);
-    return calculatedColor;
 }
 
 // https://stackoverflow.com/questions/13484943/print-a-binary-tree-in-a-pretty-way

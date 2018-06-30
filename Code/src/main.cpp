@@ -198,7 +198,7 @@ void produceRay(int x_I, int y_I, Vec3Df * origin, Vec3Df * dest)
 // Setup of the light pointer - this is called in the init of the raytracer itself.
 void createLightPointer(){
     MyLightPositions.push_back(MyCameraPosition);
-    MyLightPositionAmount.push_back(20);
+    MyLightPositionAmount.push_back(250);
     MyLightPositionPower.push_back(200.0f);
     MyLightPositionRadius.push_back(0.2f);
     setupMySphereLightPositions();
