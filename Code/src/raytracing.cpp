@@ -801,6 +801,7 @@ void setupMySphereLightPositions() {
         if (MyLightPositionAmount[MyLightPositionAmount.size()-1] > 1 && MyLightPositionRadius[MyLightPositionRadius.size()-1] > 0) {
 
             // Calculate position for every surface light.
+            // https://stackoverflow.com/questions/13775510/soft-shadows-spherical-area-light-source
             for (int i = 0; i < lightSphereAmount; i++) {
                 double theta = 2 *  M_PI * rndFloat(seed);
                 double phi = acos(1 - 2 * rndFloat(seed));
@@ -828,7 +829,8 @@ void setupMySphereLightPositions() {
  * @return the intensity of the light between the object and the light.
  */
 float intensityOfLight(const float &distance, const float &power, const float &minimum) {
-	double intensity = 1 / (4 * M_PI * distance * distance * (1 / power) + 1);
+    // http://www.softschools.com/formulas/physics/inverse_square_law_formula/82/
+	double intensity = 1 / (distance * distance);
 	if (intensity > minimum) {
 		return intensity;
 	}
