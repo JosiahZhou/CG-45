@@ -63,7 +63,7 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("test_scene_1.obj", true);
+	MyMesh.loadMesh("mirror4.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -72,10 +72,10 @@ void init()
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
 	//here, we set it to the current location of the camera
-	MyLightPositions.push_back(Vec3Df(0.25,1,0));
-	MyLightPositionPower.push_back(150.0f);
+	//MyLightPositions.push_back(Vec3Df(0.25,1,0));
+	//MyLightPositionPower.push_back(150.0f);
 	MyLightPositions.push_back(Vec3Df(-0.25,1,0));
-	MyLightPositionPower.push_back(150.0f);
+	MyLightPositionPower.push_back(1500.0f);
 
 	maxRecursionLevel = 5;
 	recurseTestRayCount = 0;
@@ -233,7 +233,7 @@ Vec3Df getLit(Vec3Df origin, Triangle ignoreTriangle) {
 				Triangle triangle = box.triangles[i];
 				// if an intersection gets found, put the resulting point and triangle in the result vars
 				if (rayIntersectionPointTriangle(ray, triangle, ignoreTriangle, intersect, distanceRay)) {
-					if (distanceRay > 0 && distanceRay < lightIntersectDist) {
+					if (distanceRay > 0 && distanceRay < lightIntersectDist && MyMesh.materials[box.materials[i]].illum() != 6) {
 						goto nextsource;
 					}
 				}
@@ -414,7 +414,9 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 				computeRefract = true;
 				computeSpecular = true;
 				diffuseContribution = Vec3Df(0,0,0);
-				mirrorReflectance = intersect.material.Ka();
+				//mirrorReflectance = intersect.material.Ka();
+				float trans = intersect.material.Tr();
+				mirrorReflectance = (1 - trans) * diffuseContribution;
 
 				float R0 = (intersect.material.Ni() - 1.0f) / (intersect.material.Ni() + 1.0f);
 				R0 *= R0;
