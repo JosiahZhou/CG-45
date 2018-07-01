@@ -34,7 +34,7 @@ Vec3Df MyCameraPosition;
 std::vector<Vec3Df> MyLightPositions;
 std::vector<int> MyLightPositionAmount;
 std::vector<float> MyLightPositionRadius;
-std::vector<int> MyLightPositionPower;
+std::vector<float> MyLightPositionPower;
 int MyLightPositionsPointer = 0;
 std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 
@@ -198,8 +198,8 @@ void produceRay(int x_I, int y_I, Vec3Df * origin, Vec3Df * dest)
 // Setup of the light pointer - this is called in the init of the raytracer itself.
 void createLightPointer(){
     MyLightPositions.push_back(MyCameraPosition);
-    MyLightPositionAmount.push_back(20);
-    MyLightPositionPower.push_back(200);
+    MyLightPositionAmount.push_back(250);
+    MyLightPositionPower.push_back(200.0f);
     MyLightPositionRadius.push_back(0.2f);
     setupMySphereLightPositions();
 }
@@ -267,6 +267,7 @@ void keyboard(unsigned char key, int x, int y)
 				Ray ray = { origin, dir };
 
 				Vec3Df rgb = Vec3Df(0, 0, 0);
+				//rgb = performRayTracing(ray.origin, dest);
 				Trace(0, ray, rgb, Triangle());
 				//store the result in an image
 				result.setPixel(x, y, RGBValue(rgb[0], rgb[1], rgb[2]));
@@ -286,11 +287,9 @@ void keyboard(unsigned char key, int x, int y)
 		exit(0);
 	}
 
-	std::cout << "HERE" << std::endl;
 	//produce the ray for the current mouse position
 	Vec3Df testRayOrigin, testRayDestination;
 	produceRay(x, y, &testRayOrigin, &testRayDestination);
 
 	yourKeyboardFunc(key, x, y, testRayOrigin, testRayDestination);
-	std::cout << "HERE2" << std::endl;
 }

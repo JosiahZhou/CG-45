@@ -13,7 +13,7 @@ extern Mesh MyMesh; //Main mesh
 extern std::vector<Vec3Df> MyLightPositions;
 extern std::vector<int> MyLightPositionAmount;
 extern std::vector<float> MyLightPositionRadius;
-extern std::vector<int> MyLightPositionPower;
+extern std::vector<float> MyLightPositionPower;
 extern std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 extern Vec3Df MyCameraPosition; //currCamera
 extern unsigned int WindowSize_X;//window resolution width
@@ -52,7 +52,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest);
 // Debug Ray
 Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t);
 //Shadow test
-bool isInShadow(Vec3Df & intersection, Triangle & triangle);
+bool isInShadow(Vec3Df & intersection, int & shadowpoints);
 //a function to debug --- you can draw in OpenGL here
 void yourDebugDraw();
 
@@ -73,7 +73,7 @@ bool ComputeRefractedRay(Ray origRay, Intersection intersect, Ray& refractedRay)
 void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle);
 void BounceLight(Ray ray, Vec3Df& luminance, Triangle ignoreTriangle);
 bool Intersect(unsigned int level, const Ray ray, Vec3Df& pointOfIntersection, Triangle& triangleOfIntersection, Triangle ignoreTriangle, float& distance);
-
+Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material material);
 // Prints the BoxTree in directory-format
 void printTree(struct BoxTree* curr, int depth);
 
@@ -99,7 +99,7 @@ BoxTree* getFirstIntersectedBoxFast(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& p
 void getAllIntersectedLeafs(Ray r, BoxTree* curr, Vec3Df& pin, Vec3Df& pout, std::vector<AABB> &intersections);
 
 // calculate the intensity of light
-double intensityOfLight(const float &distance, const float &power, const float &minimum);
+float intensityOfLight(const float &distance, const float &power, const float &minimum);
 
 Vec3Df calculateSurfaceNormal(Triangle triangle);
 Vec3Df calculateCentroid(const Triangle t);
@@ -136,6 +136,8 @@ public:
 
 	//triangles residing inside the bounding box
 	std::vector<Triangle> triangles;
+
+	std::vector<unsigned int> materials;
 };
 
 /**********************************************************************************************

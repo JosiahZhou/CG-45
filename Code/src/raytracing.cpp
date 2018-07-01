@@ -21,10 +21,6 @@
 #include <stack>
 
 int light_speed_sphere = 12391;
-bool diffuse = true;
-bool specular = true;
-bool ambient = true;
-bool shading = true;
 
 //temporary variables
 //these are only used to illustrate
@@ -47,7 +43,6 @@ BoxTree tree = BoxTree(AABB(), 0);
 // std::map<std::string, unsigned int> materialIndex;
 
 unsigned int maxRecursionLevel;
-unsigned int shadowCounter;
 
 void resetRecurseTestRays() {
 	for (int i = 0; i < 50; i++) {
@@ -68,7 +63,7 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("test_scene_1.obj", true);
+	MyMesh.loadMesh("mirror4.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -77,7 +72,10 @@ void init()
 	//one first move: initialize the first light source
 	//at least ONE light source has to be in the scene!!!
 	//here, we set it to the current location of the camera
-	MyLightPositions.push_back(MyCameraPosition);
+	//MyLightPositions.push_back(Vec3Df(0.25,1,0));
+	//MyLightPositionPower.push_back(150.0f);
+	MyLightPositions.push_back(Vec3Df(-0.25,1,0));
+	MyLightPositionPower.push_back(1500.0f);
 
 	maxRecursionLevel = 5;
 	recurseTestRayCount = 0;
@@ -96,7 +94,7 @@ BoxTree initBoxTree()
 void initAccelerationStructure()
 {
 	//tree.splitMiddle(MyMesh.triangles.size()/4.0, 3);
-	tree.splitAvg(MyMesh.triangles.size()/4.0, 3);
+	tree.splitAvg(20000, 3);
 	showBoxes(&tree);
 	printTree(&tree, 0);
 }
@@ -144,10 +142,11 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 			}
 
 			if (intersect) {
-				if (isInShadow(foundIntersection, t)) {
+				int shadowpoints = 0;
+				if (isInShadow(foundIntersection, shadowpoints)) {
 					Vec3Df color = Vec3Df(1, 1, 1);
-					int light = MyLightPositions.size() - shadowCounter;
-					double weight = (double)shadowCounter / (double)MyLightPositions.size(); // percentage in shadow
+					int light = MyLightPositions.size() - shadowpoints;
+					double weight = (double)shadowpoints / (double)MyLightPositions.size(); // percentage in shadow
 					color = (1.0 - weight) * color;
 					//std::cout << "[IsInShadow] : color: " << color << std::endl;
 					return color; // shadow == black
@@ -202,7 +201,59 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle & t) {
 	return foundIntersection;
 }
 
-bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
+Vec3Df getLit(Vec3Df origin, Triangle ignoreTriangle) {
+	Vec3Df intensity = Vec3Df(0,0,0);
+
+	for (unsigned int x = 0; x < MyLightPositions.size(); x++) {
+		Vec3Df dest = MyLightPositions[x];
+		float power = MyLightPositionPower[x];
+
+		Triangle foundTriangle;
+		float minDist = INFINITY;
+		/*********************************************************/
+		// Copied code from performRayTracing
+		/*********************************************************/
+		Vec3Df direction = dest - origin;
+		float lightIntersectDist = direction.getLength();
+		direction.normalize();
+
+		origin = origin + 0.001f * direction;
+		Ray ray;
+		ray.origin = origin;
+		ray.direction = direction;
+
+		// TODO: make this efficient
+		Vec3Df pin, pout;
+		if (rayIntersectionPointBox(ray, tree.data, pin, pout))
+		{
+			AABB box = tree.data;
+			for (int i = 0; i < box.triangles.size(); i++) {
+				Vec3Df intersect;
+				float distanceRay;
+				Triangle triangle = box.triangles[i];
+				// if an intersection gets found, put the resulting point and triangle in the result vars
+				if (rayIntersectionPointTriangle(ray, triangle, ignoreTriangle, intersect, distanceRay)) {
+					if (distanceRay > 0 && distanceRay < lightIntersectDist && MyMesh.materials[box.materials[i]].illum() != 6) {
+						goto nextsource;
+					}
+				}
+			}
+		}
+
+		{
+			Vec3Df triangleNormal = calculateSurfaceNormal(ignoreTriangle);
+			triangleNormal.normalize();
+			intensity += Vec3Df(1,1,1)*intensityOfLight(lightIntersectDist, power, 0.0f)*fabs(Vec3Df::dotProduct(triangleNormal, direction));
+		}
+
+		nextsource:
+			;
+	}
+
+	return intensity;
+}
+
+bool isInShadow(Vec3Df & intersection, int & shadowpoints) {
 	int counter = 0;
 	bool shadow = false;
 	int x = 0;
@@ -249,36 +300,66 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle) {
 			return hitSomething;
 		}*/
 	}
-	shadowCounter = counter;
+	shadowpoints = counter;
 	return shadow;
 }
 
 // returns whether the ray hit something or not
 bool Intersect(unsigned int level, const Ray ray, Intersection& intersect, Triangle ignoreTriangle) {
 	// if (level > maxRecursionLevel) return false;
-
 	intersect.distance = INFINITY;
 
 	// trace the ray through all the triangles, optimization structure needs to go here still
-	for (int i = 0; i < MyMesh.triangles.size(); i++) {
-		Vec3Df intersectionPoint;
-		float distance;
-		Triangle triangle = MyMesh.triangles[i];
-		// if an intersection gets found, put the resulting point and triangle in the result vars
-		if (rayIntersectionPointTriangle(ray, triangle, ignoreTriangle, intersectionPoint, distance)) {
-			// check if distance is smaller than previous result and larger than zero
-			if (distance < intersect.distance && distance > 0) {
-				intersect.point = intersectionPoint;
-				intersect.triangle = triangle;
-				intersect.distance = distance;
-				intersect.material = MyMesh.materials[MyMesh.triangleMaterials[i]];
 
-				Vec3Df n = calculateSurfaceNormal(triangle);
-				n.normalize();
+	//Vec3Df direction = dest - origin;
+	Vec3Df foundIntersection;
 
-				intersect.schlickCosTheta = fabs(Vec3Df::dotProduct(n, ray.direction));
+	bool intersectionBool;
+
+	Vec3Df pin, pout;
+	if (rayIntersectionPointBox(ray, tree.data, pin, pout)) {
+		std::stack<BoxTree> s;
+		s.push(*getFirstIntersectedBoxFast(ray, &tree, pin, pout));
+
+		while (!s.empty())
+		{
+			intersectionBool = false;
+			BoxTree Btree = s.top();
+			AABB box = Btree.data;
+			s.pop();
+			for (int i = 0; i < box.triangles.size(); i++)
+			{
+				Vec3Df intersectionPoint;
+				float distance;
+				Triangle triangle = box.triangles[i];
+				// if an intersection gets found, put the resulting point and triangle in the result vars
+				if (rayIntersectionPointTriangle(ray, triangle, ignoreTriangle, intersectionPoint, distance)) {
+					// check if distance is smaller than previous result and larger than zero
+					intersectionBool = true;
+					if (distance < intersect.distance && distance > 0) {
+						intersect.point = intersectionPoint;
+						intersect.triangle = triangle;
+						intersect.distance = distance;
+						intersect.material = MyMesh.materials[box.materials[i]];
+
+						Vec3Df n = calculateSurfaceNormal(triangle);
+						n.normalize();
+
+						intersect.schlickCosTheta = fabs(Vec3Df::dotProduct(n, ray.direction));
+					}
+				}
+			}
+			if (!intersectionBool) {
+				if (Btree.parent != NULL)
+				s.push(*Btree.parent);
 			}
 		}
+
+	}
+
+	if (intersect.distance < 1000000 && level == 0 && drawRecurseRays) {
+		Vec3Df intensity = getLit(intersect.point, intersect.triangle);
+		std::cout << "Intensity at point " << intersect.point << " is " << intensity << std::endl;
 	}
 
 	if (intersect.distance < 1000000) return true;
@@ -290,7 +371,7 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	directColor = Vec3Df(0,0,0);
 	reflectedColor = Vec3Df(0,0,0);
 	refractedColor = Vec3Df(0,0,0);
-
+	int shadowpoints = 0;
 	Ray reflectedRay, refractedRay;
 
 	bool computeDirect, computeReflect, computeRefract, computeSpecular;
@@ -333,7 +414,9 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 				computeRefract = true;
 				computeSpecular = true;
 				diffuseContribution = Vec3Df(0,0,0);
-				mirrorReflectance = intersect.material.Ka();
+				//mirrorReflectance = intersect.material.Ka();
+				float trans = intersect.material.Tr();
+				mirrorReflectance = (1 - trans) * diffuseContribution;
 
 				float R0 = (intersect.material.Ni() - 1.0f) / (intersect.material.Ni() + 1.0f);
 				R0 *= R0;
@@ -363,7 +446,12 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	if ((computeReflect || computeSpecular) && level + 1 <= maxRecursionLevel) {
 		if (ComputeReflectedRay(origRay, intersect.point, intersect.triangle, reflectedRay)) {
 			if (computeReflect) Trace(level + 1, reflectedRay, reflectedColor, intersect.triangle);
-			if (computeSpecular) BounceLight(reflectedRay, specularLuminance, intersect.triangle);
+			if (computeSpecular) {
+				Vec3Df normal = calculateSurfaceNormal(intersect.triangle);
+
+				specularLuminance = specularFunction(intersect.point, normal, intersect.material);
+				//BounceLight(reflectedRay, specularLuminance, intersect.triangle);
+			}
 		}
 	}
 
@@ -374,13 +462,17 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 	// TODO: figure out proper mirrorReflectance/specular usage, both should be handled differently
 	color = diffuseContribution*intersect.material.Kd()*directColor + specularLuminance*intersect.material.Ks() + mirrorReflectance*reflectedColor + glassRefractance*refractedColor;
 
+	for (unsigned int i=0; i < 3; i++) {
+		if (color.p[i] > 1.0) color.p[i] = 1.0f;
+	}
+
 	if (drawRecurseRays && level == 0) std::cout << "Got color " << color << " from level " << level << std::endl;
 
 	return;
 }
-
+// This function is obsolete, the functionality is already implemented in anoter function see specularFuntion()
 void BounceLight(Ray ray, Vec3Df& luminance, Triangle ignoreTriangle) {
-	// TODO
+	//specularFunction()
 	luminance = Vec3Df(0,0,0);
 }
 
@@ -412,7 +504,7 @@ void Trace(unsigned int level, Ray ray, Vec3Df& color, Triangle ignoreTriangle) 
 
 void ComputeDirectLight(Intersection intersect, Vec3Df& directColor) {
 	// if (isInShadow(pointOfIntersection, Triangle())) {
-	 	directColor = Vec3Df(1,1,1); // Hard shadow, item is in the shadow thus color is black
+	directColor = getLit(intersect.point, intersect.triangle); // Hard shadow, item is in the shadow thus color is black
 	// }
 
 	/*
@@ -697,9 +789,12 @@ void setupMySphereLightPositions() {
         std::uniform_real_distribution<double> rndFloat(0.0, 1.0);
 
         // Retrieve the values of the current light.
-        Vec3Df lightPosition = MyLightPositions[MyLightPositions.size()-1];
-        float lightSphereWidth = MyLightPositionRadius[MyLightPositionRadius.size()-1];
-        int lightSphereAmount = MyLightPositionAmount[MyLightPositionAmount.size()-1];
+        Vec3Df lightPosition = MyLightPositions.back();
+		MyLightPositions.pop_back();
+        float lightSphereWidth = MyLightPositionRadius.back();
+        int lightSphereAmount = MyLightPositionAmount.back();
+		float lightPower = MyLightPositionPower.back();
+		MyLightPositionPower.pop_back();
 
         // Create the list of points.
         std::vector<Vec3Df> currentLightSphere;
@@ -708,6 +803,7 @@ void setupMySphereLightPositions() {
         if (MyLightPositionAmount[MyLightPositionAmount.size()-1] > 1 && MyLightPositionRadius[MyLightPositionRadius.size()-1] > 0) {
 
             // Calculate position for every surface light.
+            // https://stackoverflow.com/questions/13775510/soft-shadows-spherical-area-light-source
             for (int i = 0; i < lightSphereAmount; i++) {
                 double theta = 2 *  M_PI * rndFloat(seed);
                 double phi = acos(1 - 2 * rndFloat(seed));
@@ -716,6 +812,7 @@ void setupMySphereLightPositions() {
                 double z = lightPosition[2] + cos(phi) * lightSphereWidth;
                 Vec3Df offset = Vec3Df(x, y, z);
                 MyLightPositions.push_back(offset);
+				MyLightPositionPower.push_back(lightPower/lightSphereAmount);
             }
         } else {
             // We just add the normal light position.
@@ -733,8 +830,9 @@ void setupMySphereLightPositions() {
  * @param minimum the minimum intensity of the light.
  * @return the intensity of the light between the object and the light.
  */
-double intensityOfLight(const float &distance, const float &power, const float &minimum) {
-	double intensity = 1 / (4 * M_PI * distance * distance * (1 / power) + 1);
+float intensityOfLight(const float &distance, const float &power, const float &minimum) {
+    // http://www.softschools.com/formulas/physics/inverse_square_law_formula/82/
+	double intensity = 1 / (distance * distance);
 	if (intensity > minimum) {
 		return intensity;
 	}
@@ -769,61 +867,27 @@ Vec3Df diffuseFunction(const Vec3Df &vertexPos, Vec3Df &normal, Material *materi
  * @param lightPosition the lightposition.
  * @return The specular light.
  */
-Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material *material, Vec3Df lightPosition) {
+Vec3Df specularFunction(const Vec3Df &vertexPosition, Vec3Df &normal, Material material) {
+	double specularWeight = 1.0 / MyLightPositions.size();
+	Vec3Df toreturn = Vec3Df(0, 0, 0);
+	for (Vec3Df light : MyLightPositions) {
+		Vec3Df vectorView = vertexPosition - MyCameraPosition;
+		vectorView.normalize();
 
-    Vec3Df vectorView = vertexPosition - MyCameraPosition;
-    vectorView.normalize();
+		Vec3Df vectorLight = light - vertexPosition;
+		vectorLight.normalize();
 
-    Vec3Df vectorLight = lightPosition - vertexPosition;
-    vectorLight.normalize();
+		normal.normalize();
+		Vec3Df reflection = vectorLight - 2 * (Vec3Df::dotProduct(normal, vectorLight)) * normal;
+		reflection.normalize();
 
-    normal.normalize();
-    Vec3Df reflection = vectorLight - 2 * (Vec3Df::dotProduct(normal, vectorLight)) * normal;
-    reflection.normalize();
+		float dotProduct = std::max(Vec3Df::dotProduct(vectorView, reflection), 0.0f);
 
-    float dotProduct = std::max(Vec3Df::dotProduct(vectorView, reflection), 0.0f);
-
-    // take the power
-    return material->Ks() * pow(dotProduct, material->Ns());
-
+		// take the power
+		toreturn = toreturn + specularWeight * ( material.Ks() * pow(dotProduct, material.Ns()));
+	}
+	return toreturn;
 }
-
-/**
- * Method to calculate the shading.
- *
- * @param ray the ray.
- * @param vertexPos  the vertex position.
- * @param normal the normal.
- * @param material the material.
- * @return The shading on impact.
- */
-Vec3Df calculateShading(const Vec3Df &vertexPosition, Vec3Df &normal, Material *material) {
-
-    // initially black
-    Vec3Df calculatedColor(0, 0, 0);
-
-    // Add the ambient shading
-    if (ambient && material->has_Ka()) {
-        calculatedColor = calculatedColor + material->Ka();
-    }
-
-    // Calculate the shading for every light source.
-    for (int i = 0; i < MyLightPositions.size(); i++) {
-
-        // Add the diffuse shading.
-        if (diffuse && material->has_Kd()) {
-            calculatedColor = calculatedColor + material->Tr() * diffuseFunction(vertexPosition, normal, material, MyLightPositions[i]);
-        }
-
-        // Add the specular shading.
-        if (specular && material->has_Ks() && material->has_Ns()) {
-            calculatedColor = calculatedColor + material->Tr() * specularFunction(vertexPosition, normal, material, MyLightPositions[i]);
-        }
-    }
-
-    return calculatedColor;
-}
-
 
 // https://stackoverflow.com/questions/13484943/print-a-binary-tree-in-a-pretty-way
 int rec[1000006];
@@ -1029,10 +1093,11 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		Triangle t;
 		Vec3Df intersection = DebugRay(testRayOrigin, testRayDestination, t);
 		testRayDestination = intersection;
+		int shadowpoints = 0;
 		/*std::cout << "Intersection Point: " << testRayDestination <<std::endl;
 		std::cout << "Intersection Point: " << intersection <<std::endl;*/
 
-		if (isInShadow(intersection, t)) {
+		if (isInShadow(intersection, shadowpoints)) {
 			std::cout << "Intersection lies in the : SHADOW" << std::endl;
 
 		}
@@ -1136,30 +1201,51 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 		}
 		break;
 	case 'q':
-	{
-		drawRecurseRays = true;
+		{
+			drawRecurseRays = true;
 
-		resetRecurseTestRays();
+			resetRecurseTestRays();
 
-		Ray recurseTestRay;
+			Ray recurseTestRay;
 
-		Vec3Df resultColor;
+			Vec3Df resultColor;
 
-		recurseTestRay.origin = rayOrigin;
-		recurseTestRay.direction = normRayDirection;
+			recurseTestRay.origin = rayOrigin;
+			recurseTestRay.direction = normRayDirection;
 
-		std::cout << "Starting recursive raytrace..." << std::endl;
+			std::cout << "Starting recursive raytrace..." << std::endl;
 
-		Trace(0, recurseTestRay, resultColor, Triangle());
+			Trace(0, recurseTestRay, resultColor, Triangle());
 
-		std::cout << "Recursive ray trace done." << std::endl;
+			std::cout << "Recursive ray trace done." << std::endl;
 
-		drawRecurseRays = false;
-	}
-	break;
+			drawRecurseRays = false;
+		}
+		break;
+	case 'Q':
+		{
+			std::cout << "MyLightPositions: (" << MyLightPositions.size() << ")" << std::endl;
+			for (Vec3Df l : MyLightPositions) {
+				std::cout << l << std::endl;
+			}
+			std::cout << "MyLightPositionAmount: " << std::endl;
+			for (int i : MyLightPositionAmount) {
+				std::cout << i << std::endl;
+			}
+			std::cout << "MyLightPositionRadius: " << std::endl;
+			for (float f : MyLightPositionRadius) {
+				std::cout << f << std::endl;
+			}
+			std::cout << "MyLightPositionPower: (" << MyLightPositionPower.size() << ")" << std::endl;
+			for (int i : MyLightPositionPower) {
+				std::cout << i << std::endl;
+			}
+		}
+		break;
 	default:
 		break;
 	}
+
 
 	std::cout << t << " pressed! The mouse was in location " << x << "," << y << "!" << std::endl;
 }
@@ -1175,6 +1261,7 @@ AABB::AABB()
 	vertices_ = std::vector<Vertex>();
 	sides_ = std::vector<std::pair<Vec3Df, Vec3Df>>();
 	triangles = std::vector<Triangle>();
+	materials = std::vector<unsigned int>();
 }
 
 AABB::AABB(const Vec3Df min, const Vec3Df max)
@@ -1183,6 +1270,7 @@ AABB::AABB(const Vec3Df min, const Vec3Df max)
 	vertices_ = std::vector<Vertex>();
 	sides_ = std::vector<std::pair<Vec3Df, Vec3Df>>();
 	triangles = std::vector<Triangle>();
+	materials = std::vector<unsigned int>();
 
 	//	+------+
 	//  |`.    |`.
@@ -1282,6 +1370,7 @@ AABB::AABB(const Vec3Df min, const Vec3Df max)
 		if (withinBox(MyMesh.triangles[i]))
 		{
 			triangles.push_back(MyMesh.triangles[i]);
+			materials.push_back(MyMesh.triangleMaterials[i]);
 		}
 	}
 }
