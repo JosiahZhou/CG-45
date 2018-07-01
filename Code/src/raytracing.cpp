@@ -94,7 +94,7 @@ BoxTree initBoxTree()
 void initAccelerationStructure()
 {
 	//tree.splitMiddle(MyMesh.triangles.size()/4.0, 3);
-	tree.splitAvg(20000, 3);
+	tree.splitAvg(MyMesh.triangles.size()/10.0, 10, 1);
 	showBoxes(&tree);
 	printTree(&tree, 0);
 }
@@ -1577,7 +1577,7 @@ void BoxTree::splitMiddle(int minTriangles, int maxLevel)
 	right->splitMiddle(minTriangles, maxLevel);
 }
 
-void BoxTree::splitAvg(int minTriangles, int maxLevel)
+void BoxTree::splitAvg(int minTriangles, int maxLevel, int currentEdge)
 {
 	if (data.triangles.size() > 0) {
 		data = data.trim();
@@ -1614,15 +1614,7 @@ void BoxTree::splitAvg(int minTriangles, int maxLevel)
 
 	avg /= ((float)data.triangles.size() * 3.0f);
 
-	int edge = 2;
-	if (edgeX > edgeY && edgeX > edgeZ)
-	{
-		edge = 0;
-	}
-	else if (edgeY > edgeX && edgeY > edgeZ)
-	{
-		edge = 1;
-	}
+	int edge = (currentEdge + 1)%3;
 
 	newMin[edge] = avg[edge];
 	newMax[edge] = avg[edge];
@@ -1636,8 +1628,8 @@ void BoxTree::splitAvg(int minTriangles, int maxLevel)
 	left->parent = this;
 	right->parent = this;
 
-	left->splitAvg(minTriangles, maxLevel);
-	right->splitAvg(minTriangles, maxLevel);
+	left->splitAvg(minTriangles, maxLevel, edge);
+	right->splitAvg(minTriangles, maxLevel, edge);
 }
 
 // reduce empty space of bounding box
