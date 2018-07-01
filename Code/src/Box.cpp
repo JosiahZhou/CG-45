@@ -187,8 +187,8 @@ Box::Box(const Vec3Df min, const Vec3Df max, const Mesh &mesh)
 	for (int i = 0; i < mesh.triangles.size(); ++i)
 	{
 		if (contains(mesh.vertices[mesh.triangles[i].v[0]])
-			&& contains(mesh.vertices[mesh.triangles[i].v[1]])
-			&& contains(mesh.vertices[mesh.triangles[i].v[2]]))
+			|| contains(mesh.vertices[mesh.triangles[i].v[1]])
+			|| contains(mesh.vertices[mesh.triangles[i].v[2]]))
 		{
 			this->triangles.push_back(mesh.triangles[i]);
 		}
@@ -269,8 +269,8 @@ void Box::trim(const Mesh &mesh)
 {
 	if (triangles.size() > 0)
 	{
-		Vec3Df newMin = this->min;
-		Vec3Df newMax = this->max;
+		Vec3Df newMin = mesh.vertices[triangles[0].v[0]].p;
+		Vec3Df newMax = mesh.vertices[triangles[0].v[0]].p;
 		for (int i = 0; i < triangles.size(); ++i)
 		{
 			for (int y = 0; y < 3; y++)
@@ -336,7 +336,7 @@ bool Box::withinBox(const Triangle t, const Mesh &MyMesh)
 // box are made using the new min and max vertices.
 std::pair<Box, Box> Box::split(Mesh &mesh)
 {
-	trim(mesh);
+	//trim(MyMesh);
 
 	float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
 	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
@@ -375,127 +375,127 @@ std::pair<Box, Box> Box::split(Mesh &mesh)
 	Box leftNode = Box(oldMin, newMax, mesh);
 	Box rightNode = Box(newMin, oldMax, mesh);
 
-	for (int i = 0; i < triangles.size(); ++i)
-	{
-		if (leftNode.contains(mesh.vertices[triangles[i].v[0]])
-			|| leftNode.contains(mesh.vertices[triangles[i].v[1]])
-			|| leftNode.contains(mesh.vertices[triangles[i].v[2]]))
-		{
-			if (rightNode.contains(mesh.vertices[triangles[i].v[0]])
-				|| rightNode.contains(mesh.vertices[triangles[i].v[1]])
-				|| rightNode.contains(mesh.vertices[triangles[i].v[2]]))
-			{
-				Triangle t = triangles[i];
+	/*//for (int i = 0; i < triangles.size(); ++i)
+	//{
+	//	if (leftNode.contains(mesh.vertices[triangles[i].v[0]])
+	//		|| leftNode.contains(mesh.vertices[triangles[i].v[1]])
+	//		|| leftNode.contains(mesh.vertices[triangles[i].v[2]]))
+	//	{
+	//		if (rightNode.contains(mesh.vertices[triangles[i].v[0]])
+	//			|| rightNode.contains(mesh.vertices[triangles[i].v[1]])
+	//			|| rightNode.contains(mesh.vertices[triangles[i].v[2]]))
+	//		{
+	//			Triangle t = triangles[i];
 
-				Vertex inver, outver1, outver2;
-				int inverIdx, outver1Idx, outver2Idx;
+	//			Vertex inver, outver1, outver2;
+	//			int inverIdx, outver1Idx, outver2Idx;
 
-				bool leftIsInver = false;
+	//			bool leftIsInver = false;
 
-				if (leftNode.contains(mesh.vertices[t.v[0]]) && leftNode.contains(mesh.vertices[t.v[1]]))
-				{
-					inverIdx = t.v[2];
-					outver1Idx = t.v[0];
-					outver2Idx = t.v[1];
-				}
-				else if (leftNode.contains(mesh.vertices[t.v[0]]) && leftNode.contains(mesh.vertices[t.v[2]]))
-				{
-					inverIdx = t.v[1];
-					outver1Idx = t.v[0];
-					outver2Idx = t.v[2];
-				}
-				else if (leftNode.contains(mesh.vertices[t.v[1]]) && leftNode.contains(mesh.vertices[t.v[2]]))
-				{
-					inverIdx = t.v[0];
-					outver1Idx = t.v[1];
-					outver2Idx = t.v[2];
-				}
-				else if (leftNode.contains(mesh.vertices[t.v[0]]))
-				{
-					leftIsInver = true;
-					inverIdx = t.v[0];
-					outver1Idx = t.v[1];
-					outver2Idx = t.v[2];
-				}
-				else if (leftNode.contains(mesh.vertices[t.v[1]]))
-				{
-					leftIsInver = true;
-					inverIdx = t.v[1];
-					outver1Idx = t.v[0];
-					outver2Idx = t.v[2];
-				}
-				else
-				{
-					leftIsInver = true;
-					inverIdx = t.v[2];
-					outver1Idx = t.v[0];
-					outver2Idx = t.v[1];
-				}
+	//			if (leftNode.contains(mesh.vertices[t.v[0]]) && leftNode.contains(mesh.vertices[t.v[1]]))
+	//			{
+	//				inverIdx = t.v[2];
+	//				outver1Idx = t.v[0];
+	//				outver2Idx = t.v[1];
+	//			}
+	//			else if (leftNode.contains(mesh.vertices[t.v[0]]) && leftNode.contains(mesh.vertices[t.v[2]]))
+	//			{
+	//				inverIdx = t.v[1];
+	//				outver1Idx = t.v[0];
+	//				outver2Idx = t.v[2];
+	//			}
+	//			else if (leftNode.contains(mesh.vertices[t.v[1]]) && leftNode.contains(mesh.vertices[t.v[2]]))
+	//			{
+	//				inverIdx = t.v[0];
+	//				outver1Idx = t.v[1];
+	//				outver2Idx = t.v[2];
+	//			}
+	//			else if (leftNode.contains(mesh.vertices[t.v[0]]))
+	//			{
+	//				leftIsInver = true;
+	//				inverIdx = t.v[0];
+	//				outver1Idx = t.v[1];
+	//				outver2Idx = t.v[2];
+	//			}
+	//			else if (leftNode.contains(mesh.vertices[t.v[1]]))
+	//			{
+	//				leftIsInver = true;
+	//				inverIdx = t.v[1];
+	//				outver1Idx = t.v[0];
+	//				outver2Idx = t.v[2];
+	//			}
+	//			else
+	//			{
+	//				leftIsInver = true;
+	//				inverIdx = t.v[2];
+	//				outver1Idx = t.v[0];
+	//				outver2Idx = t.v[1];
+	//			}
 
-				inver = mesh.vertices[inverIdx];
-				outver1 = mesh.vertices[outver1Idx];
-				outver2 = mesh.vertices[outver2Idx];
+	//			inver = mesh.vertices[inverIdx];
+	//			outver1 = mesh.vertices[outver1Idx];
+	//			outver2 = mesh.vertices[outver2Idx];
 
-				Vertex pinver = Vertex(inver);
-				Vertex poutver = Vertex(inver);
+	//			Vertex pinver = Vertex(inver);
+	//			Vertex poutver = Vertex(inver);
 
-				Vec3Df pin, pout;
-				Ray r;
-				r.direction = inver.p - outver1.p;
-				r.origin = inver.p;
-				rayIntersectionPointBox(r, leftNode, pin, pout);
+	//			Vec3Df pin, pout;
+	//			Ray r;
+	//			r.direction = inver.p - outver1.p;
+	//			r.origin = inver.p;
+	//			rayIntersectionPointBox(r, leftNode, pin, pout);
 
-				Vec3Df pin2, pout2;
-				r.direction = inver.p - outver2.p;
-				r.origin = inver.p;
-				rayIntersectionPointBox(r, leftNode, pin2, pout2);
+	//			Vec3Df pin2, pout2;
+	//			r.direction = inver.p - outver2.p;
+	//			r.origin = inver.p;
+	//			rayIntersectionPointBox(r, leftNode, pin2, pout2);
 
-				int size = mesh.vertices.size();
+	//			int size = mesh.vertices.size();
 
-				pinver.p = pin;
-				poutver.p = pin2;
+	//			pinver.p = pin;
+	//			poutver.p = pin2;
 
-				mesh.vertices.push_back(pinver);
-				mesh.vertices.push_back(poutver);
+	//			mesh.vertices.push_back(pinver);
+	//			mesh.vertices.push_back(poutver);
 
-				Triangle tri1 = Triangle(outver1Idx, t.t[0], size, t.t[1], outver2Idx, t.t[2]);
-				Triangle tri2 = Triangle(outver2Idx, t.t[0], size, t.t[1], size + 1, t.t[2]);
-				Triangle tri3 = Triangle(inverIdx, t.t[0], size, t.t[1], size + 1, t.t[2]);
-				
-				//error when pushed
-				//mesh.triangles.push_back(tri1);
-				//mesh.triangles.push_back(tri2);
-				//mesh.triangles.push_back(tri3);
+	//			Triangle tri1 = Triangle(outver1Idx, t.t[0], size, t.t[1], outver2Idx, t.t[2]);
+	//			Triangle tri2 = Triangle(outver2Idx, t.t[0], size, t.t[1], size + 1, t.t[2]);
+	//			Triangle tri3 = Triangle(inverIdx, t.t[0], size, t.t[1], size + 1, t.t[2]);
+	//			
+	//			//error when pushed
+	//			//mesh.triangles.push_back(tri1);
+	//			//mesh.triangles.push_back(tri2);
+	//			//mesh.triangles.push_back(tri3);
 
-				if (leftIsInver)
-				{
-					leftNode.triangles.push_back(tri3);
-					rightNode.triangles.push_back(tri1);
-					rightNode.triangles.push_back(tri2);
-				}
-				else {
-					rightNode.triangles.push_back(tri3);
-					leftNode.triangles.push_back(tri1);
-					leftNode.triangles.push_back(tri2);
-				}
+	//			if (leftIsInver)
+	//			{
+	//				leftNode.triangles.push_back(tri3);
+	//				rightNode.triangles.push_back(tri1);
+	//				rightNode.triangles.push_back(tri2);
+	//			}
+	//			else {
+	//				rightNode.triangles.push_back(tri3);
+	//				leftNode.triangles.push_back(tri1);
+	//				leftNode.triangles.push_back(tri2);
+	//			}
 
 
-				//		// 3 triangles:
-				//		// 0 -- pin1 -- 1
+	//			//		// 3 triangles:
+	//			//		// 0 -- pin1 -- 1
 
-				//		//Triangle first = Triangle(t.v[0], _, pin1, _, v1, _);
+	//			//		//Triangle first = Triangle(t.v[0], _, pin1, _, v1, _);
 
-				//		//// 1 -- pin1 -- pin2
-				//		//Triangle second = Triangle(v1, _, pin1, _, pin2, _);
+	//			//		//// 1 -- pin1 -- pin2
+	//			//		//Triangle second = Triangle(v1, _, pin1, _, pin2, _);
 
-				//		//// 2 -- pin1 -- pin2
-				//		//Triangle third = Triangle(v2, _, pin1, _, pin2, _);
+	//			//		//// 2 -- pin1 -- pin2
+	//			//		//Triangle third = Triangle(v2, _, pin1, _, pin2, _);
 
-				//		//leftNode.triangles.push_back(...);
-				//		//rightNode.triangles.push_back(...);
-			}
-		}
-	}
+	//			//		//leftNode.triangles.push_back(...);
+	//			//		//rightNode.triangles.push_back(...);
+	//		}
+	//	}
+	//}*/
 
 	return std::pair<Box, Box>(leftNode, rightNode);
 }

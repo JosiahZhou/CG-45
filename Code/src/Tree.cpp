@@ -27,7 +27,11 @@ template<class T> Tree<T>::Tree(const T &data, Tree<T>* left, Tree<T>* right)
 // exceeded.
 void Tree<Box>::split(const int &minTriangles, Mesh &mesh)
 {
+	this->data.trim(mesh);
+	this->data = Box(this->data.min, this->data.max, mesh);
+	
 	if (this == NULL || data.triangles.size() < minTriangles) return;
+	
 	std::pair<Box, Box> boxes = data.split(mesh);
 
 	this->left = new Tree<Box>(boxes.first);
