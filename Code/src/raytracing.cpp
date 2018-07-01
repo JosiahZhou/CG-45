@@ -61,11 +61,11 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("dodgeColorTest.obj", true);
+	MyMesh.loadMesh("DodgeColorTest.obj", true);
 	MyMesh.computeVertexNormals();
 
 	root = new Tree<Box>(Box(MyMesh));
-	root->split(4000, MyMesh);
+	root->split(MyMesh.triangles.size()/10, MyMesh.triangles.size()*1.5, MyMesh);
 	root->print(0);
 
 	//one first move: initialize the first light source
@@ -110,7 +110,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 			{
 				Vec3Df pointOfIntersection;
 				float distanceRay;
-				const Triangle* triangle = box.triangles[i];
+				std::shared_ptr<const Triangle> &triangle = box.triangles[i];
 				if (rayIntersectionPointTriangle(r, *triangle, Triangle(), pointOfIntersection, distanceRay))
 				{
 					intersect = true;
@@ -125,7 +125,7 @@ Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
 			if (intersect) {
 				if (isInShadow(foundIntersection, t, root)) {
 					Vec3Df color = Vec3Df(1, 1, 1);
-					int light = MyLightPositions.size() - shadowCounter;
+					size_t light = MyLightPositions.size() - shadowCounter;
 					double weight = (double)shadowCounter / (double)MyLightPositions.size(); // percentage in shadow
 					color = (1.0 - weight) * color;
 					//std::cout << "[IsInShadow] : color: " << color << std::endl;
@@ -172,7 +172,7 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle t, Tree<Box
 			{
 				Vec3Df pointOfIntersection;
 				float distanceRay;
-				const Triangle* triangle = box.triangles[i];
+				std::shared_ptr<const Triangle> &triangle = box.triangles[i];
 				if (rayIntersectionPointTriangle(r, *triangle, Triangle(), pointOfIntersection, distanceRay))
 				{
 					if (minDist > distanceRay && distanceRay > 0) {
@@ -211,7 +211,7 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle, Tree<Box
 			for (int i = 0; i < box.triangles.size(); i++) {
 				Vec3Df intersect;
 				float distanceRay;
-				const Triangle* triangle = box.triangles[i];
+				std::shared_ptr<const Triangle> &triangle = box.triangles[i];
 				// if an intersection gets found, put the resulting point and triangle in the result vars
 				if (rayIntersectionPointTriangle(ray, *triangle, Triangle(), intersect, distanceRay)) {
 					//intersectBool = true;
@@ -634,9 +634,11 @@ void yourDebugDraw()
 	glPopAttrib();
 
 	// draw the bounding boxes
-	root->highlightEdges();
-
-	root->highlightEdges();
+	/*root->highlightEdges();*/
+	std::vector<Box*> leaves = root->getLeaves();
+	for (int i = 0; i < leaves.size(); i++) {
+		leaves[i]->highlightEdges();
+	}
 
 	for (int i = 0; i < 20; i++) {
 		drawRay(recurseTestRayOrigins[i], recurseTestRayDestinations[i], Vec3Df(0, 1, 0));
@@ -940,9 +942,19 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 			//				}
 			Ray r = { rayOrigin, normRayDirection };
 
-			if (rayIntersectionPointTriangle(r, *triangle, Triangle(), pointOfIntersection, distanceRay))
+			//if (rayIntersectionPointTriangle(r, *triangle, Triangle(), pointOfIntersection, distanceRay))
+			//{
+			//	std::cout << "Ray InterSects Triangle: " << pointOfIntersection << std::endl;
+			//	//					Material mat = MyMesh.materials[MyMesh.triangleMaterials[i]];
+			//	//					mat.set_Kd(0, 0, 0);
+			//	//					std::cout << (mat.Kd()) << std::endl;
+			//}
+
+			Vec3Df pin, pout;
+			if (rayIntersectionPointBox(r, root->data, pin, pout))
 			{
-				std::cout << "Ray InterSects Triangle: " << pointOfIntersection << std::endl;
+				std::cout << "PIN : " << pin << std::endl;
+				std::cout << "POUT : " << pout << std::endl;
 				//					Material mat = MyMesh.materials[MyMesh.triangleMaterials[i]];
 				//					mat.set_Kd(0, 0, 0);
 				//					std::cout << (mat.Kd()) << std::endl;
@@ -970,7 +982,7 @@ void yourKeyboardFunc(char t, int x, int y, const Vec3Df & rayOrigin, const Vec3
 	break;
 	case 'd': // constructs axis aligned bounding boxes
 	{
-		root->print(0);
+		//root->print(0);
 		std::cout << root->size() << std::endl;
 		root->highlightEdges();
 	}
