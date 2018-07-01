@@ -41,8 +41,8 @@ std::vector<std::vector<Vec3Df>> MySphereLightPositions;
 //Main mesh
 Mesh MyMesh;
 
-unsigned int WindowSize_X = 600;  // resolution X
-unsigned int WindowSize_Y = 600;  // resolution Y
+unsigned int WindowSize_X = 400;  // resolution X
+unsigned int WindowSize_Y = 400;  // resolution Y
 
 
 /**

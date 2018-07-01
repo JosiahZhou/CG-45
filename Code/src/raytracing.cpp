@@ -28,8 +28,8 @@ int light_speed_sphere = 12391;
 Vec3Df testRayOrigin;
 Vec3Df testRayDestination;
 
-Vec3Df recurseTestRayOrigins[50];
-Vec3Df recurseTestRayDestinations[50];
+Vec3Df recurseTestRayOrigins[512];
+Vec3Df recurseTestRayDestinations[512];
 bool drawRecurseRays;
 
 unsigned int recurseTestRayCount;
@@ -45,7 +45,7 @@ BoxTree tree = BoxTree(AABB(), 0);
 unsigned int maxRecursionLevel;
 
 void resetRecurseTestRays() {
-	for (int i = 0; i < 50; i++) {
+	for (int i = 0; i < 512; i++) {
 		recurseTestRayOrigins[i] = Vec3Df(0, 0, 0);
 		recurseTestRayDestinations[i] = Vec3Df(0, 0, 0);
 	}
@@ -63,7 +63,7 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("mirror4.obj", true);
+	MyMesh.loadMesh("mug.obj", true);
 	MyMesh.computeVertexNormals();
 
 	tree = initBoxTree();
@@ -74,10 +74,12 @@ void init()
 	//here, we set it to the current location of the camera
 	//MyLightPositions.push_back(Vec3Df(0.25,1,0));
 	//MyLightPositionPower.push_back(150.0f);
-	MyLightPositions.push_back(Vec3Df(-0.25,1,0));
-	MyLightPositionPower.push_back(1500.0f);
+	MyLightPositions.push_back(Vec3Df(-0.6,0.7,0));
+	MyLightPositionPower.push_back(350.0f);
+	MyLightPositions.push_back(Vec3Df(-0.1,0.9,0.5));
+	MyLightPositionPower.push_back(150.0f);
 
-	maxRecursionLevel = 5;
+	maxRecursionLevel = 7;
 	recurseTestRayCount = 0;
 
 	resetRecurseTestRays();
@@ -94,7 +96,7 @@ BoxTree initBoxTree()
 void initAccelerationStructure()
 {
 	//tree.splitMiddle(MyMesh.triangles.size()/4.0, 3);
-	tree.splitAvg(20000, 3);
+	tree.splitAvg(2000000, 3);
 	showBoxes(&tree);
 	printTree(&tree, 0);
 }
@@ -233,7 +235,7 @@ Vec3Df getLit(Vec3Df origin, Triangle ignoreTriangle) {
 				Triangle triangle = box.triangles[i];
 				// if an intersection gets found, put the resulting point and triangle in the result vars
 				if (rayIntersectionPointTriangle(ray, triangle, ignoreTriangle, intersect, distanceRay)) {
-					if (distanceRay > 0 && distanceRay < lightIntersectDist && MyMesh.materials[box.materials[i]].illum() != 6) {
+					if (distanceRay > 0 && distanceRay < lightIntersectDist) {
 						goto nextsource;
 					}
 				}
@@ -414,9 +416,9 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 				computeRefract = true;
 				computeSpecular = true;
 				diffuseContribution = Vec3Df(0,0,0);
-				//mirrorReflectance = intersect.material.Ka();
-				float trans = intersect.material.Tr();
-				mirrorReflectance = (1 - trans) * diffuseContribution;
+				mirrorReflectance = intersect.material.Ka();
+				// float trans = intersect.material.Tr();
+				// mirrorReflectance = (1 - trans) * diffuseContribution;
 
 				float R0 = (intersect.material.Ni() - 1.0f) / (intersect.material.Ni() + 1.0f);
 				R0 *= R0;
@@ -464,6 +466,10 @@ void Shade(unsigned int level, Ray origRay, Intersection intersect, Vec3Df& colo
 
 	for (unsigned int i=0; i < 3; i++) {
 		if (color.p[i] > 1.0) color.p[i] = 1.0f;
+	}
+
+	if (level == maxRecursionLevel) {
+		for (unsigned int i=0; i < 3; i++) color.p[i] = 0.5f;
 	}
 
 	if (drawRecurseRays && level == 0) std::cout << "Got color " << color << " from level " << level << std::endl;
@@ -762,7 +768,7 @@ void yourDebugDraw()
 		box.highlightBoxEdges();
 	}
 
-	for (int i = 0; i < 20; i++) {
+	for (int i = 0; i < 512; i++) {
 		drawRay(recurseTestRayOrigins[i], recurseTestRayDestinations[i], Vec3Df(0, 1, 0));
 	}
 
@@ -832,7 +838,7 @@ void setupMySphereLightPositions() {
  */
 float intensityOfLight(const float &distance, const float &power, const float &minimum) {
     // http://www.softschools.com/formulas/physics/inverse_square_law_formula/82/
-	double intensity = 1 / (distance * distance);
+	double intensity = 1 / (4 * M_PI * distance * distance * (1 / power) + 1);
 	if (intensity > minimum) {
 		return intensity;
 	}
