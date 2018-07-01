@@ -832,7 +832,7 @@ void setupMySphereLightPositions() {
  */
 float intensityOfLight(const float &distance, const float &power, const float &minimum) {
     // http://www.softschools.com/formulas/physics/inverse_square_law_formula/82/
-	double intensity = 1 / (distance * distance);
+	double intensity = 1 / (4 * M_PI * distance * distance * (1/power) + 1);
 	if (intensity > minimum) {
 		return intensity;
 	}
