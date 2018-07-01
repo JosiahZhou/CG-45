@@ -239,7 +239,7 @@ Vec3Df getLit(Vec3Df origin, Triangle ignoreTriangle) {
 							recurseTestRayDestinations[recurseTestRayCount] = intersect;
 							recurseTestRayCount++;
 
-							std::cout << "  Traced a SHADOW ray on level " << 999 << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << distanceRay << std::endl;
+							std::cout << "  Traced a SHADOW ray: from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << distanceRay << std::endl;
 						}
 						goto nextsource;
 					}
@@ -251,7 +251,7 @@ Vec3Df getLit(Vec3Df origin, Triangle ignoreTriangle) {
 				recurseTestRayDestinations[recurseTestRayCount] = dest;
 				recurseTestRayCount++;
 
-				std::cout << "  Traced a SHADOW ray on level " << 999 << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << 999 << std::endl;
+				std::cout << "  Traced a SHADOW ray on level " << 999 << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled  - no intersection" << std::endl;
 			}
 		{
 			Vec3Df triangleNormal = calculateSurfaceNormal(ignoreTriangle);
