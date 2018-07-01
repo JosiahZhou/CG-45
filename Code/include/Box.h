@@ -17,6 +17,7 @@ public:
 	std::vector<Triangle> triangles;
 
 	bool contains(const Vertex &v);
+	bool contains(const Triangle &t, const Mesh &mesh);
 
 	void highlightEdges();
 	

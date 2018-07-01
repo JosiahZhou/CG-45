@@ -187,8 +187,8 @@ Box::Box(const Vec3Df min, const Vec3Df max, const Mesh &mesh)
 	for (int i = 0; i < mesh.triangles.size(); ++i)
 	{
 		if (contains(mesh.vertices[mesh.triangles[i].v[0]])
-			|| contains(mesh.vertices[mesh.triangles[i].v[1]])
-			|| contains(mesh.vertices[mesh.triangles[i].v[2]]))
+			&& contains(mesh.vertices[mesh.triangles[i].v[1]])
+			&& contains(mesh.vertices[mesh.triangles[i].v[2]]))
 		{
 			this->triangles.push_back(mesh.triangles[i]);
 		}
@@ -330,52 +330,62 @@ bool Box::withinBox(const Triangle t, const Mesh &MyMesh)
 	return false;
 }
 
+bool Box::contains(const Triangle &t, const Mesh &mesh)
+{
+	if (contains(mesh.vertices[t.v[0]])
+		&& contains(mesh.vertices[t.v[1]])
+		&& contains(mesh.vertices[t.v[2]]))
+	{
+		return true;
+	}
+	return false;
+}
+
+
 // Returns two halves of a bounding box. The bounding box is first trimmed to
 // into its smallest form. The average vertex position of all the triangles is
 // calculated. The longest dimenention of the box is split in half and two
 // box are made using the new min and max vertices.
 std::pair<Box, Box> Box::split(Mesh &mesh)
 {
-	//trim(MyMesh);
+	//float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
+	//float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
+	//float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
 
-	float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
-	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
-	float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
+	//Vec3Df avg = Vec3Df(0.0f, 0.0f, 0.0f);
 
-	Vec3Df avg = Vec3Df(0.0f, 0.0f, 0.0f);
+	//for (int i = 0; i < triangles.size(); ++i)
+	//{
+	//	for (int m = 0; m < 3; ++m)
+	//	{
+	//		avg += mesh.vertices[triangles[i].v[m]].p;
+	//	}
+	//}
 
-	for (int i = 0; i < triangles.size(); ++i)
-	{
-		for (int m = 0; m < 3; ++m)
-		{
-			avg += mesh.vertices[triangles[i].v[m]].p;
-		}
-	}
+	//avg /= ((float)triangles.size() * 3.0f);
 
-	avg /= ((float)triangles.size() * 3.0f);
+	//int edge = 2;
+	//if (edgeX > edgeY && edgeX > edgeZ)
+	//{
+	//	edge = 0;
+	//}
+	//else if (edgeY > edgeX && edgeY > edgeZ)
+	//{
+	//	edge = 1;
+	//}
 
-	int edge = 2;
-	if (edgeX > edgeY && edgeX > edgeZ)
-	{
-		edge = 0;
-	}
-	else if (edgeY > edgeX && edgeY > edgeZ)
-	{
-		edge = 1;
-	}
+	//Vec3Df oldMin = Vec3Df(min[0], min[1], min[2]);
+	//Vec3Df oldMax = Vec3Df(max[0], max[1], max[2]);
 
-	Vec3Df oldMin = Vec3Df(min[0], min[1], min[2]);
-	Vec3Df oldMax = Vec3Df(max[0], max[1], max[2]);
+	//Vec3Df newMin = Vec3Df(min[0], min[1], min[2]);
+	//Vec3Df newMax = Vec3Df(max[0], max[1], max[2]);
+	//newMin[edge] = avg[edge];
+	//newMax[edge] = avg[edge];
 
-	Vec3Df newMin = Vec3Df(min[0], min[1], min[2]);
-	Vec3Df newMax = Vec3Df(max[0], max[1], max[2]);
-	newMin[edge] = avg[edge];
-	newMax[edge] = avg[edge];
+	//Box leftNode = Box(oldMin, newMax, mesh);
+	//Box rightNode = Box(newMin, oldMax, mesh);
 
-	Box leftNode = Box(oldMin, newMax, mesh);
-	Box rightNode = Box(newMin, oldMax, mesh);
-
-	/*//for (int i = 0; i < triangles.size(); ++i)
+	//for (int i = 0; i < triangles.size(); ++i)
 	//{
 	//	if (leftNode.contains(mesh.vertices[triangles[i].v[0]])
 	//		|| leftNode.contains(mesh.vertices[triangles[i].v[1]])
@@ -478,26 +488,153 @@ std::pair<Box, Box> Box::split(Mesh &mesh)
 	//				leftNode.triangles.push_back(tri1);
 	//				leftNode.triangles.push_back(tri2);
 	//			}
-
-
-	//			//		// 3 triangles:
-	//			//		// 0 -- pin1 -- 1
-
-	//			//		//Triangle first = Triangle(t.v[0], _, pin1, _, v1, _);
-
-	//			//		//// 1 -- pin1 -- pin2
-	//			//		//Triangle second = Triangle(v1, _, pin1, _, pin2, _);
-
-	//			//		//// 2 -- pin1 -- pin2
-	//			//		//Triangle third = Triangle(v2, _, pin1, _, pin2, _);
-
-	//			//		//leftNode.triangles.push_back(...);
-	//			//		//rightNode.triangles.push_back(...);
 	//		}
 	//	}
-	//}*/
+	//}
 
-	return std::pair<Box, Box>(leftNode, rightNode);
+	//return std::pair<Box, Box>(leftNode, rightNode);
+	float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
+	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
+	float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
+
+	Vec3Df avg = Vec3Df(0.0f, 0.0f, 0.0f);
+
+	for (int i = 0; i < triangles.size(); ++i)
+	{
+		for (int m = 0; m < 3; ++m)
+		{
+			avg += mesh.vertices[triangles[i].v[m]].p;
+		}
+	}
+
+	avg /= ((float)triangles.size() * 3.0f);
+
+	int edge = 2;
+	if (edgeX > edgeY && edgeX > edgeZ)
+	{
+		edge = 0;
+	}
+	else if (edgeY > edgeX && edgeY > edgeZ)
+	{
+		edge = 1;
+	}
+
+	Vec3Df newMin = min;
+	Vec3Df newMax = max;
+	newMin[edge] = avg[edge];
+	newMax[edge] = avg[edge];
+	std::cout << "tr: " << triangles.size() << std::endl;
+
+	Box leftBox = Box(min, newMax, mesh);
+	Box rightBox = Box(newMin, max, mesh);
+
+	for (int i = 0; i < triangles.size(); i++)
+	{
+		if (!leftBox.contains(triangles[i], mesh) && !rightBox.contains(triangles[i], mesh))
+		{
+			int inVer, outVer1, outVer2;
+			if (leftBox.contains(mesh.vertices[triangles[i].v[0]]))
+			{
+				if (leftBox.contains(mesh.vertices[triangles[i].v[1]]))
+				{
+					inVer = triangles[i].v[2];
+					outVer1 = triangles[i].v[0];
+					outVer2 = triangles[i].v[1];
+				}
+				else
+				{
+					if (leftBox.contains(mesh.vertices[triangles[i].v[2]]))
+					{
+						inVer = triangles[i].v[1];
+						outVer1 = triangles[i].v[0];
+						outVer2 = triangles[i].v[2];
+					}
+					else
+					{
+						inVer = triangles[i].v[0];
+						outVer1 = triangles[i].v[1];
+						outVer2 = triangles[i].v[2];
+					}
+				}
+			}
+			else
+			{
+				if (leftBox.contains(mesh.vertices[triangles[i].v[1]]))
+				{
+					if (leftBox.contains(mesh.vertices[triangles[i].v[2]]))
+					{
+						inVer = triangles[i].v[0];
+						outVer1 = triangles[i].v[1];
+						outVer2 = triangles[i].v[2];
+					}
+					else
+					{
+						inVer = triangles[i].v[1];
+						outVer1 = triangles[i].v[0];
+						outVer2 = triangles[i].v[2];
+					}
+				}
+				else
+				{
+					inVer = triangles[i].v[2];
+					outVer1 = triangles[i].v[0];
+					outVer2 = triangles[i].v[1];
+				}
+			}
+			Vec3Df IntersectionPoint1 = mesh.vertices[inVer].p + (mesh.vertices[inVer].p - mesh.vertices[outVer1].p) * ((newMax[edge] - mesh.vertices[inVer].p[edge]) / (mesh.vertices[inVer].p[edge] - mesh.vertices[outVer1].p[edge]));
+			Vec3Df IntersectionPoint2 = mesh.vertices[inVer].p + (mesh.vertices[inVer].p - mesh.vertices[outVer2].p) * ((newMax[edge] - mesh.vertices[inVer].p[edge]) / (mesh.vertices[inVer].p[edge] - mesh.vertices[outVer2].p[edge]));
+			std::cout << "Inter1: " << IntersectionPoint1 << std::endl;
+			std::cout << "Inter2: " << IntersectionPoint2 << std::endl;
+			if (IntersectionPoint1[0] < -20)
+			{
+				std::cout << "stop" << std::endl;
+			}
+			Vertex IntersectionVertex1 = mesh.vertices[inVer];
+			Vertex IntersectionVertex2 = mesh.vertices[inVer];
+
+			IntersectionVertex1.p = IntersectionPoint1;
+			IntersectionVertex2.p = IntersectionPoint2;
+
+			Triangle inTri = Triangle(inVer, triangles[i].t[0], mesh.vertices.size(), triangles[i].t[1], mesh.vertices.size() + 1, triangles[i].t[2]);
+			Triangle outTri1 = Triangle(outVer1, triangles[i].t[0], outVer2, triangles[i].t[1], mesh.vertices.size(), triangles[i].t[2]);
+			Triangle outTri2 = Triangle(outVer2, triangles[i].t[0], mesh.vertices.size(), triangles[i].t[1], mesh.vertices.size() + 1, triangles[i].t[2]);
+
+			mesh.vertices.push_back(IntersectionVertex1);
+			mesh.vertices.push_back(IntersectionVertex2);
+
+			mesh.triangles.push_back(inTri);
+			mesh.triangles.push_back(outTri1);
+			mesh.triangles.push_back(outTri2);
+
+			mesh.triangleMaterials.push_back(mesh.triangleMaterials[i]);
+			mesh.triangleMaterials.push_back(mesh.triangleMaterials[i]);
+			mesh.triangleMaterials.push_back(mesh.triangleMaterials[i]);
+
+			if (leftBox.contains(inTri, mesh))
+			{
+				leftBox.triangles.push_back(mesh.triangles[mesh.triangles.size() - 3]);
+			}
+			else {
+				rightBox.triangles.push_back(mesh.triangles[mesh.triangles.size() - 3]);
+			}
+			if (leftBox.contains(outTri1, mesh))
+			{
+				leftBox.triangles.push_back(mesh.triangles[mesh.triangles.size() - 2]);
+			}
+			else {
+				rightBox.triangles.push_back(mesh.triangles[mesh.triangles.size() - 2]);
+			}
+			if (leftBox.contains(outTri2, mesh))
+			{
+				leftBox.triangles.push_back(mesh.triangles[mesh.triangles.size() - 1]);
+			}
+			else {
+				rightBox.triangles.push_back(mesh.triangles[mesh.triangles.size() - 1]);
+			}
+		}
+	}
+	return std::pair<Box, Box>(leftBox, rightBox);
+
 }
 
 // Returns two halves of a bounding box. The bounding box is first trimmed to
