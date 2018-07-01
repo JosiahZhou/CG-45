@@ -150,7 +150,7 @@ public:
 
 	// splits the box ("data") recursively into smaller parts, and adds them to the tree, until it the amount of triangles within the box is smaller than "minTriangles"
 	void splitMiddle(int minTriangles, int maxLevel);
-	void splitAvg(int minTriangles, int maxLevel);
+	void splitAvg(int minTriangles, int maxLevel, int currentEdge);
 
 	AABB data;
 	BoxTree *parent = NULL;
