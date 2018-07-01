@@ -79,7 +79,7 @@ void init()
 	MyLightPositions.push_back(Vec3Df(-0.1,0.9,0.5));
 	MyLightPositionPower.push_back(150.0f);
 
-	maxRecursionLevel = 7;
+	maxRecursionLevel = 5;
 	recurseTestRayCount = 0;
 
 	resetRecurseTestRays();
