@@ -234,12 +234,25 @@ Vec3Df getLit(Vec3Df origin, Triangle ignoreTriangle) {
 				// if an intersection gets found, put the resulting point and triangle in the result vars
 				if (rayIntersectionPointTriangle(ray, triangle, ignoreTriangle, intersect, distanceRay)) {
 					if (distanceRay > 0 && distanceRay < lightIntersectDist && MyMesh.materials[box.materials[i]].illum() != 6) {
+						if (drawRecurseRays) {
+							recurseTestRayOrigins[recurseTestRayCount] = ray.origin;
+							recurseTestRayDestinations[recurseTestRayCount] = intersect;
+							recurseTestRayCount++;
+
+							std::cout << "  Traced a SHADOW ray: from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled " << distanceRay << std::endl;
+						}
 						goto nextsource;
 					}
 				}
 			}
 		}
+		if (drawRecurseRays) {
+				recurseTestRayOrigins[recurseTestRayCount] = ray.origin;
+				recurseTestRayDestinations[recurseTestRayCount] = dest;
+				recurseTestRayCount++;
 
+				std::cout << "  Traced a SHADOW ray on level " << 999 << " from " << recurseTestRayOrigins[recurseTestRayCount - 1] << " to " << recurseTestRayDestinations[recurseTestRayCount - 1] << ". Travelled  - no intersection" << std::endl;
+			}
 		{
 			Vec3Df triangleNormal = calculateSurfaceNormal(ignoreTriangle);
 			triangleNormal.normalize();
