@@ -14,7 +14,7 @@ public:
 	Vec3Df min;
 	Vec3Df max;
 	std::vector<Vertex> corners;
-	std::vector<const Triangle*> triangles;
+	std::vector<Triangle> triangles;
 
 	bool contains(const Vertex &v);
 
@@ -22,11 +22,12 @@ public:
 	
 	void trim(const Mesh &mesh);
 
-	std::pair<Box, Box> split(const Mesh &mesh);
+	std::pair<Box, Box> split(Mesh &mesh);
 
 	std::pair<Box, Box> splitMiddle(const int & minTriangles, const Mesh &mesh);
 
 	bool withinBoxFull(const Triangle t, const Mesh &MyMesh);
+	bool withinBox(const Triangle t, const Mesh &MyMesh);
 };
 
 #endif

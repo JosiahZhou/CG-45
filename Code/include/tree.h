@@ -20,7 +20,7 @@ public:
 		return this->left->size() + this->right->size() + 1;
 	}
 
-	void split(const int &minTriangles, const Mesh &mesh);
+	void split(const int &minTriangles, Mesh &mesh);
 
 	void print(const int depth);
 

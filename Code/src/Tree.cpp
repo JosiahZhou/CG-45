@@ -25,7 +25,7 @@ template<class T> Tree<T>::Tree(const T &data, Tree<T>* left, Tree<T>* right)
 // Splits the box of the tree into two and allocates them to the left
 // and right trees until the minimum triangles in a box has been
 // exceeded.
-void Tree<Box>::split(const int &minTriangles, const Mesh &mesh)
+void Tree<Box>::split(const int &minTriangles, Mesh &mesh)
 {
 	if (this == NULL || data.triangles.size() < minTriangles) return;
 	std::pair<Box, Box> boxes = data.split(mesh);

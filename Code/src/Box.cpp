@@ -1,4 +1,5 @@
 #include "box.h"
+#include "raytracing.h"
 
 
 Box::Box(void) {}
@@ -99,7 +100,7 @@ Box::Box(const Mesh &mesh)
 
 	for (int i = 0; i < mesh.triangles.size(); ++i)
 	{
-		this->triangles.push_back(&mesh.triangles[i]);
+		this->triangles.push_back(mesh.triangles[i]);
 	}
 }
 
@@ -186,10 +187,10 @@ Box::Box(const Vec3Df min, const Vec3Df max, const Mesh &mesh)
 	for (int i = 0; i < mesh.triangles.size(); ++i)
 	{
 		if (contains(mesh.vertices[mesh.triangles[i].v[0]])
-			|| contains(mesh.vertices[mesh.triangles[i].v[1]])
-			|| contains(mesh.vertices[mesh.triangles[i].v[2]]))
+			&& contains(mesh.vertices[mesh.triangles[i].v[1]])
+			&& contains(mesh.vertices[mesh.triangles[i].v[2]]))
 		{
-			this->triangles.push_back(&mesh.triangles[i]);
+			this->triangles.push_back(mesh.triangles[i]);
 		}
 	}
 }
@@ -276,16 +277,15 @@ void Box::trim(const Mesh &mesh)
 			{
 				for (int x = 0; x < 3; x++)
 				{
-					if (withinBoxFull(*triangles[i], mesh))
+					if (withinBoxFull(triangles[i], mesh))
 					{
-
-						if (mesh.vertices[triangles[i]->v[y]].p[x] > newMax[x])
+						if (mesh.vertices[triangles[i].v[y]].p[x] > newMax[x])
 						{
-							newMax[x] = mesh.vertices[triangles[i]->v[y]].p[x];
+							newMax[x] = mesh.vertices[triangles[i].v[y]].p[x];
 						}
-						if (mesh.vertices[triangles[i]->v[y]].p[x] < newMin[x])
+						if (mesh.vertices[triangles[i].v[y]].p[x] < newMin[x])
 						{
-							newMin[x] = mesh.vertices[triangles[i]->v[y]].p[x];
+							newMin[x] = mesh.vertices[triangles[i].v[y]].p[x];
 						}
 					}
 				}
@@ -313,12 +313,28 @@ bool Box::withinBoxFull(const Triangle t, const Mesh &MyMesh)
 	return true;
 }
 
+bool Box::withinBox(const Triangle t, const Mesh &MyMesh)
+{
+	for (int i = 0; i < 3; i++)
+	{
+		// if atleast one vertex is in box then we consider the triangle inside of the box
+		if (!(MyMesh.vertices[t.v[i]].p[0] >= corners[0].p[0] && MyMesh.vertices[t.v[i]].p[0] <= corners[7].p[0] &&
+			MyMesh.vertices[t.v[i]].p[1] >= corners[0].p[1] && MyMesh.vertices[t.v[i]].p[1] <= corners[7].p[1] &&
+			MyMesh.vertices[t.v[i]].p[2] >= corners[0].p[2] && MyMesh.vertices[t.v[i]].p[2] <= corners[7].p[2]))
+		{
+			return true;
+		}
+	}
+
+	// all vertices are outside the box
+	return false;
+}
 
 // Returns two halves of a bounding box. The bounding box is first trimmed to
 // into its smallest form. The average vertex position of all the triangles is
 // calculated. The longest dimenention of the box is split in half and two
 // box are made using the new min and max vertices.
-std::pair<Box, Box> Box::split(const Mesh &mesh)
+std::pair<Box, Box> Box::split(Mesh &mesh)
 {
 	trim(mesh);
 
@@ -332,7 +348,7 @@ std::pair<Box, Box> Box::split(const Mesh &mesh)
 	{
 		for (int m = 0; m < 3; ++m)
 		{
-			avg += mesh.vertices[triangles[i]->v[m]].p;
+			avg += mesh.vertices[triangles[i].v[m]].p;
 		}
 	}
 
@@ -356,10 +372,132 @@ std::pair<Box, Box> Box::split(const Mesh &mesh)
 	newMin[edge] = avg[edge];
 	newMax[edge] = avg[edge];
 
-	if (oldMin == newMin || oldMax == newMax)
-		std::cout << "HEHEHE" << std::endl;
+	Box leftNode = Box(oldMin, newMax, mesh);
+	Box rightNode = Box(newMin, oldMax, mesh);
 
-	return std::pair<Box, Box>(Box(oldMin, newMax, mesh), Box(newMin, oldMax, mesh));
+	for (int i = 0; i < triangles.size(); ++i)
+	{
+		if (leftNode.contains(mesh.vertices[triangles[i].v[0]])
+			|| leftNode.contains(mesh.vertices[triangles[i].v[1]])
+			|| leftNode.contains(mesh.vertices[triangles[i].v[2]]))
+		{
+			if (rightNode.contains(mesh.vertices[triangles[i].v[0]])
+				|| rightNode.contains(mesh.vertices[triangles[i].v[1]])
+				|| rightNode.contains(mesh.vertices[triangles[i].v[2]]))
+			{
+				Triangle t = triangles[i];
+
+				Vertex inver, outver1, outver2;
+				int inverIdx, outver1Idx, outver2Idx;
+
+				bool leftIsInver = false;
+
+				if (leftNode.contains(mesh.vertices[t.v[0]]) && leftNode.contains(mesh.vertices[t.v[1]]))
+				{
+					inverIdx = t.v[2];
+					outver1Idx = t.v[0];
+					outver2Idx = t.v[1];
+				}
+				else if (leftNode.contains(mesh.vertices[t.v[0]]) && leftNode.contains(mesh.vertices[t.v[2]]))
+				{
+					inverIdx = t.v[1];
+					outver1Idx = t.v[0];
+					outver2Idx = t.v[2];
+				}
+				else if (leftNode.contains(mesh.vertices[t.v[1]]) && leftNode.contains(mesh.vertices[t.v[2]]))
+				{
+					inverIdx = t.v[0];
+					outver1Idx = t.v[1];
+					outver2Idx = t.v[2];
+				}
+				else if (leftNode.contains(mesh.vertices[t.v[0]]))
+				{
+					leftIsInver = true;
+					inverIdx = t.v[0];
+					outver1Idx = t.v[1];
+					outver2Idx = t.v[2];
+				}
+				else if (leftNode.contains(mesh.vertices[t.v[1]]))
+				{
+					leftIsInver = true;
+					inverIdx = t.v[1];
+					outver1Idx = t.v[0];
+					outver2Idx = t.v[2];
+				}
+				else
+				{
+					leftIsInver = true;
+					inverIdx = t.v[2];
+					outver1Idx = t.v[0];
+					outver2Idx = t.v[1];
+				}
+
+				inver = mesh.vertices[inverIdx];
+				outver1 = mesh.vertices[outver1Idx];
+				outver2 = mesh.vertices[outver2Idx];
+
+				Vertex pinver = Vertex(inver);
+				Vertex poutver = Vertex(inver);
+
+				Vec3Df pin, pout;
+				Ray r;
+				r.direction = inver.p - outver1.p;
+				r.origin = inver.p;
+				rayIntersectionPointBox(r, leftNode, pin, pout);
+
+				Vec3Df pin2, pout2;
+				r.direction = inver.p - outver2.p;
+				r.origin = inver.p;
+				rayIntersectionPointBox(r, leftNode, pin2, pout2);
+
+				int size = mesh.vertices.size();
+
+				pinver.p = pin;
+				poutver.p = pin2;
+
+				mesh.vertices.push_back(pinver);
+				mesh.vertices.push_back(poutver);
+
+				Triangle tri1 = Triangle(outver1Idx, t.t[0], size, t.t[1], outver2Idx, t.t[2]);
+				Triangle tri2 = Triangle(outver2Idx, t.t[0], size, t.t[1], size + 1, t.t[2]);
+				Triangle tri3 = Triangle(inverIdx, t.t[0], size, t.t[1], size + 1, t.t[2]);
+				
+				//error when pushed
+				//mesh.triangles.push_back(tri1);
+				//mesh.triangles.push_back(tri2);
+				//mesh.triangles.push_back(tri3);
+
+				if (leftIsInver)
+				{
+					leftNode.triangles.push_back(tri3);
+					rightNode.triangles.push_back(tri1);
+					rightNode.triangles.push_back(tri2);
+				}
+				else {
+					rightNode.triangles.push_back(tri3);
+					leftNode.triangles.push_back(tri1);
+					leftNode.triangles.push_back(tri2);
+				}
+
+
+				//		// 3 triangles:
+				//		// 0 -- pin1 -- 1
+
+				//		//Triangle first = Triangle(t.v[0], _, pin1, _, v1, _);
+
+				//		//// 1 -- pin1 -- pin2
+				//		//Triangle second = Triangle(v1, _, pin1, _, pin2, _);
+
+				//		//// 2 -- pin1 -- pin2
+				//		//Triangle third = Triangle(v2, _, pin1, _, pin2, _);
+
+				//		//leftNode.triangles.push_back(...);
+				//		//rightNode.triangles.push_back(...);
+			}
+		}
+	}
+
+	return std::pair<Box, Box>(leftNode, rightNode);
 }
 
 // Returns two halves of a bounding box. The bounding box is first trimmed to

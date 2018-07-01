@@ -80,76 +80,6 @@ void init()
 	drawRecurseRays = false;
 }
 
-
-//return the color of your pixel.
-Vec3Df performRayTracing(const Vec3Df & origin, const Vec3Df & dest)
-{
-	Vec3Df direction = dest - origin;
-	float minDist = INFINITY;
-	Vec3Df foundIntersection;
-	Triangle t;
-	bool intersect;
-	Ray r = { origin, direction };
-
-	Vec3Df pin, pout;
-	if (rayIntersectionPointBox(r, root->data, pin, pout))
-	{
-		//std::vector<AABB> intersections;
-		//getAllIntersectedLeafs(r, &tree, pin, pout, intersections);
-		//std::sort(intersections.begin(), intersections.end(), less_than());
-
-		std::stack<Tree<Box>> s;
-		s.push(*getFirstIntersectedBoxFast(r, root, pin, pout));
-		while (!s.empty())
-		{
-			intersect = false;
-			Tree<Box> Btree = s.top();
-			Box box = Btree.data;
-			s.pop();
-			for (int i = 0; i < box.triangles.size(); i++)
-			{
-				Vec3Df pointOfIntersection;
-				float distanceRay;
-				const Triangle* triangle = box.triangles[i];
-				if (rayIntersectionPointTriangle(r, *triangle, Triangle(), pointOfIntersection, distanceRay))
-				{
-					intersect = true;
-					if (minDist > distanceRay && distanceRay > 0) {
-						t = *triangle;
-						foundIntersection = pointOfIntersection;
-						minDist = distanceRay;
-					}
-				}
-			}
-
-			if (intersect) {
-				if (isInShadow(foundIntersection, t, root)) {
-					Vec3Df color = Vec3Df(1, 1, 1);
-					int light = MyLightPositions.size() - shadowCounter;
-					double weight = (double)shadowCounter / (double)MyLightPositions.size(); // percentage in shadow
-					color = (1.0 - weight) * color;
-					//std::cout << "[IsInShadow] : color: " << color << std::endl;
-					return color; // shadow == black
-				}
-				else {
-					// color and other stuff here as well...
-					return Vec3Df(1, 1, 1); // light == white
-
-				}
-			}
-			//else
-			//{
-			//	if (Btree.parent != NULL)
-			//		s.push(*Btree.parent);
-			//}
-		}
-	}
-	//caclulate shadows --> only for the minimum distance ( closestIntersectionPoint)
-	// color and other stuff here as well...
-	return Vec3Df(1, 0, 0);
-	//return Vec3Df(dest[0], dest[1], dest[2]);
-}
-
 Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle t, Tree<Box>* root) {
 	Vec3Df direction = dest - origin;
 	float minDist = INFINITY;
@@ -172,11 +102,11 @@ Vec3Df DebugRay(const Vec3Df & origin, const Vec3Df & dest, Triangle t, Tree<Box
 			{
 				Vec3Df pointOfIntersection;
 				float distanceRay;
-				const Triangle* triangle = box.triangles[i];
-				if (rayIntersectionPointTriangle(r, *triangle, Triangle(), pointOfIntersection, distanceRay))
+				const Triangle triangle = box.triangles[i];
+				if (rayIntersectionPointTriangle(r, triangle, Triangle(), pointOfIntersection, distanceRay))
 				{
 					if (minDist > distanceRay && distanceRay > 0) {
-						t = *triangle;
+						t = triangle;
 						foundIntersection = pointOfIntersection;
 						minDist = distanceRay;
 					}
@@ -211,9 +141,9 @@ bool isInShadow(Vec3Df & intersection, Triangle & intersectionTriangle, Tree<Box
 			for (int i = 0; i < box.triangles.size(); i++) {
 				Vec3Df intersect;
 				float distanceRay;
-				const Triangle* triangle = box.triangles[i];
+				const Triangle triangle = box.triangles[i];
 				// if an intersection gets found, put the resulting point and triangle in the result vars
-				if (rayIntersectionPointTriangle(ray, *triangle, Triangle(), intersect, distanceRay)) {
+				if (rayIntersectionPointTriangle(ray, triangle, Triangle(), intersect, distanceRay)) {
 					//intersectBool = true;
 					if (distanceRay > 0) {
 						minDist = distanceRay;
