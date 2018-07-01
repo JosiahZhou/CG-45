@@ -1,6 +1,4 @@
 #include "box.h"
-#include "raytracing.h"
-
 
 Box::Box(void) {}
 
@@ -348,151 +346,6 @@ bool Box::contains(const Triangle &t, const Mesh &mesh)
 // box are made using the new min and max vertices.
 std::pair<Box, Box> Box::split(Mesh &mesh)
 {
-	//float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
-	//float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
-	//float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
-
-	//Vec3Df avg = Vec3Df(0.0f, 0.0f, 0.0f);
-
-	//for (int i = 0; i < triangles.size(); ++i)
-	//{
-	//	for (int m = 0; m < 3; ++m)
-	//	{
-	//		avg += mesh.vertices[triangles[i].v[m]].p;
-	//	}
-	//}
-
-	//avg /= ((float)triangles.size() * 3.0f);
-
-	//int edge = 2;
-	//if (edgeX > edgeY && edgeX > edgeZ)
-	//{
-	//	edge = 0;
-	//}
-	//else if (edgeY > edgeX && edgeY > edgeZ)
-	//{
-	//	edge = 1;
-	//}
-
-	//Vec3Df oldMin = Vec3Df(min[0], min[1], min[2]);
-	//Vec3Df oldMax = Vec3Df(max[0], max[1], max[2]);
-
-	//Vec3Df newMin = Vec3Df(min[0], min[1], min[2]);
-	//Vec3Df newMax = Vec3Df(max[0], max[1], max[2]);
-	//newMin[edge] = avg[edge];
-	//newMax[edge] = avg[edge];
-
-	//Box leftNode = Box(oldMin, newMax, mesh);
-	//Box rightNode = Box(newMin, oldMax, mesh);
-
-	//for (int i = 0; i < triangles.size(); ++i)
-	//{
-	//	if (leftNode.contains(mesh.vertices[triangles[i].v[0]])
-	//		|| leftNode.contains(mesh.vertices[triangles[i].v[1]])
-	//		|| leftNode.contains(mesh.vertices[triangles[i].v[2]]))
-	//	{
-	//		if (rightNode.contains(mesh.vertices[triangles[i].v[0]])
-	//			|| rightNode.contains(mesh.vertices[triangles[i].v[1]])
-	//			|| rightNode.contains(mesh.vertices[triangles[i].v[2]]))
-	//		{
-	//			Triangle t = triangles[i];
-
-	//			Vertex inver, outver1, outver2;
-	//			int inverIdx, outver1Idx, outver2Idx;
-
-	//			bool leftIsInver = false;
-
-	//			if (leftNode.contains(mesh.vertices[t.v[0]]) && leftNode.contains(mesh.vertices[t.v[1]]))
-	//			{
-	//				inverIdx = t.v[2];
-	//				outver1Idx = t.v[0];
-	//				outver2Idx = t.v[1];
-	//			}
-	//			else if (leftNode.contains(mesh.vertices[t.v[0]]) && leftNode.contains(mesh.vertices[t.v[2]]))
-	//			{
-	//				inverIdx = t.v[1];
-	//				outver1Idx = t.v[0];
-	//				outver2Idx = t.v[2];
-	//			}
-	//			else if (leftNode.contains(mesh.vertices[t.v[1]]) && leftNode.contains(mesh.vertices[t.v[2]]))
-	//			{
-	//				inverIdx = t.v[0];
-	//				outver1Idx = t.v[1];
-	//				outver2Idx = t.v[2];
-	//			}
-	//			else if (leftNode.contains(mesh.vertices[t.v[0]]))
-	//			{
-	//				leftIsInver = true;
-	//				inverIdx = t.v[0];
-	//				outver1Idx = t.v[1];
-	//				outver2Idx = t.v[2];
-	//			}
-	//			else if (leftNode.contains(mesh.vertices[t.v[1]]))
-	//			{
-	//				leftIsInver = true;
-	//				inverIdx = t.v[1];
-	//				outver1Idx = t.v[0];
-	//				outver2Idx = t.v[2];
-	//			}
-	//			else
-	//			{
-	//				leftIsInver = true;
-	//				inverIdx = t.v[2];
-	//				outver1Idx = t.v[0];
-	//				outver2Idx = t.v[1];
-	//			}
-
-	//			inver = mesh.vertices[inverIdx];
-	//			outver1 = mesh.vertices[outver1Idx];
-	//			outver2 = mesh.vertices[outver2Idx];
-
-	//			Vertex pinver = Vertex(inver);
-	//			Vertex poutver = Vertex(inver);
-
-	//			Vec3Df pin, pout;
-	//			Ray r;
-	//			r.direction = inver.p - outver1.p;
-	//			r.origin = inver.p;
-	//			rayIntersectionPointBox(r, leftNode, pin, pout);
-
-	//			Vec3Df pin2, pout2;
-	//			r.direction = inver.p - outver2.p;
-	//			r.origin = inver.p;
-	//			rayIntersectionPointBox(r, leftNode, pin2, pout2);
-
-	//			int size = mesh.vertices.size();
-
-	//			pinver.p = pin;
-	//			poutver.p = pin2;
-
-	//			mesh.vertices.push_back(pinver);
-	//			mesh.vertices.push_back(poutver);
-
-	//			Triangle tri1 = Triangle(outver1Idx, t.t[0], size, t.t[1], outver2Idx, t.t[2]);
-	//			Triangle tri2 = Triangle(outver2Idx, t.t[0], size, t.t[1], size + 1, t.t[2]);
-	//			Triangle tri3 = Triangle(inverIdx, t.t[0], size, t.t[1], size + 1, t.t[2]);
-	//			
-	//			//error when pushed
-	//			//mesh.triangles.push_back(tri1);
-	//			//mesh.triangles.push_back(tri2);
-	//			//mesh.triangles.push_back(tri3);
-
-	//			if (leftIsInver)
-	//			{
-	//				leftNode.triangles.push_back(tri3);
-	//				rightNode.triangles.push_back(tri1);
-	//				rightNode.triangles.push_back(tri2);
-	//			}
-	//			else {
-	//				rightNode.triangles.push_back(tri3);
-	//				leftNode.triangles.push_back(tri1);
-	//				leftNode.triangles.push_back(tri2);
-	//			}
-	//		}
-	//	}
-	//}
-
-	//return std::pair<Box, Box>(leftNode, rightNode);
 	float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
 	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
 	float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
@@ -523,7 +376,45 @@ std::pair<Box, Box> Box::split(Mesh &mesh)
 	Vec3Df newMax = max;
 	newMin[edge] = avg[edge];
 	newMax[edge] = avg[edge];
-	std::cout << "tr: " << triangles.size() << std::endl;
+
+	Box leftBox = Box(min, newMax, mesh);
+	Box rightBox = Box(newMin, max, mesh);
+
+	return std::pair<Box, Box>(leftBox, rightBox);
+}
+
+std::pair<Box, Box> Box::splitCut(Mesh &mesh)
+{
+	float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
+	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
+	float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
+
+	Vec3Df avg = Vec3Df(0.0f, 0.0f, 0.0f);
+
+	for (int i = 0; i < triangles.size(); ++i)
+	{
+		for (int m = 0; m < 3; ++m)
+		{
+			avg += mesh.vertices[triangles[i].v[m]].p;
+		}
+	}
+
+	avg /= ((float)triangles.size() * 3.0f);
+
+	int edge = 2;
+	if (edgeX > edgeY && edgeX > edgeZ)
+	{
+		edge = 0;
+	}
+	else if (edgeY > edgeX && edgeY > edgeZ)
+	{
+		edge = 1;
+	}
+
+	Vec3Df newMin = min;
+	Vec3Df newMax = max;
+	newMin[edge] = avg[edge];
+	newMax[edge] = avg[edge];
 
 	Box leftBox = Box(min, newMax, mesh);
 	Box rightBox = Box(newMin, max, mesh);
@@ -583,8 +474,7 @@ std::pair<Box, Box> Box::split(Mesh &mesh)
 			}
 			Vec3Df IntersectionPoint1 = mesh.vertices[inVer].p + (mesh.vertices[inVer].p - mesh.vertices[outVer1].p) * ((newMax[edge] - mesh.vertices[inVer].p[edge]) / (mesh.vertices[inVer].p[edge] - mesh.vertices[outVer1].p[edge]));
 			Vec3Df IntersectionPoint2 = mesh.vertices[inVer].p + (mesh.vertices[inVer].p - mesh.vertices[outVer2].p) * ((newMax[edge] - mesh.vertices[inVer].p[edge]) / (mesh.vertices[inVer].p[edge] - mesh.vertices[outVer2].p[edge]));
-			std::cout << "Inter1: " << IntersectionPoint1 << std::endl;
-			std::cout << "Inter2: " << IntersectionPoint2 << std::endl;
+
 			if (IntersectionPoint1[0] < -20)
 			{
 				std::cout << "stop" << std::endl;
