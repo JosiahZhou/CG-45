@@ -17,8 +17,6 @@ public:
 	Vertex corners[8];
 	std::vector<std::shared_ptr<const Triangle>> triangles;
 
-	Vec3Df intersect(const Vec3Df line1, const Vec3Df line2);
-
 	bool contains(const Vertex &v);
 
 	bool contains(const Triangle &t, const Mesh &mesh);
@@ -27,9 +25,11 @@ public:
 	
 	void trim(const Mesh &mesh);
 
-	std::pair<Box, Box> split(Mesh &mesh);
+	std::pair<Box, Box> splitAvg(Mesh &mesh);
 
 	std::pair<Box, Box> splitMiddle(const int & minTriangles, Mesh &mesh);
+
+	void clip(Box &leftBox, Box &rightBox, Mesh &mesh);
 };
 
 #endif

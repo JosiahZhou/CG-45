@@ -186,62 +186,13 @@ Box::Box(const Vec3Df min, const Vec3Df max, std::vector<std::shared_ptr<const T
 	for (int i = 0; i < tris.size(); i++)
 	{
 		if (contains(mesh.vertices[tris[i]->v[0]])
-			&& contains(mesh.vertices[tris[i]->v[1]])
-			&& contains(mesh.vertices[tris[i]->v[2]]))
+			|| contains(mesh.vertices[tris[i]->v[1]])
+			|| contains(mesh.vertices[tris[i]->v[2]]))
 		{
 			this->triangles.push_back(tris[i]);
 		}
 	}
 }
-
-// Returns the coordinates of the intersection between a line and a box.
-Vec3Df Box::intersect(const Vec3Df inP, const Vec3Df outP)
-{
-	float tminX, tminY, tminZ, tmaxX, tmaxY, tmaxZ, tinX, tinY, tinZ, toutX, toutY, toutZ, tin, tout;
-
-	tminX = ((min.p[0] - inP.p[0]) / (inP.p[0] - outP.p[0])); // (x - Ox) / Dx
-	tminY = ((min.p[1] - inP.p[1]) / (inP.p[1] - outP.p[1])); // (y - Oy) / Dy
-	tminZ = ((min.p[2] - inP.p[2]) / (inP.p[2] - outP.p[2])); // (z - Oz) / Dz
-
-	tmaxX = ((max.p[0] - inP.p[0]) / (inP.p[0] - outP.p[0])); // (x - Ox) / Dx
-	tmaxY = ((max.p[1] - inP.p[1]) / (inP.p[1] - outP.p[1])); // (y - Oy) / Dy
-	tmaxZ = ((max.p[2] - inP.p[2]) / (inP.p[2] - outP.p[2])); // (z - Oz) / Dz
-
-	tinX = std::min(tminX, tmaxX);
-	toutX = std::max(tminX, tmaxX);
-	tinY = std::min(tminY, tmaxY);
-	toutY = std::max(tminY, tmaxY);
-	tinZ = std::min(tminZ, tmaxZ);
-	toutZ = std::max(tminZ, tmaxZ);
-
-	tin = std::max(tinX, std::max(tinY, tinZ));
-	tout = std::min(toutX, std::min(toutY, toutZ));
-
-	Vec3Df pin = inP + (inP - outP) * tin;
-	Vec3Df pout = inP + (inP - outP) * tout;
-	if (Vec3Df::squaredDistance(pin, inP) + Vec3Df::squaredDistance(pin, outP) < Vec3Df::squaredDistance(pout, inP) + Vec3Df::squaredDistance(pout, outP)) return pin;
-	return pout;
-}
-
-//float tminX, tminY, tminZ, tmaxX, tmaxY, tmaxZ, tinX, tinY, tinZ, tin;
-
-//tminX = ((min.p[0] - inP.p[0]) / (inP.p[0] - outP.p[0])); // (x - Ox) / Dx
-//tminY = ((min.p[1] - inP.p[1]) / (inP.p[1] - outP.p[1])); // (y - Oy) / Dy
-//tminZ = ((min.p[2] - inP.p[2]) / (inP.p[2] - outP.p[2])); // (z - Oz) / Dz
-
-//tmaxX = ((max.p[0] - inP.p[0]) / (inP.p[0] - outP.p[0])); // (x - Ox) / Dx
-//tmaxY = ((max.p[1] - inP.p[1]) / (inP.p[1] - outP.p[1])); // (y - Oy) / Dy
-//tmaxZ = ((max.p[2] - inP.p[2]) / (inP.p[2] - outP.p[2])); // (z - Oz) / Dz
-//
-//tin = tminX;
-//if (std::abs(tminY) < std::abs(tin)) tin = tminY;
-//if (std::abs(tminZ) < std::abs(tin)) tin = tminZ;
-//if (std::abs(tmaxX) < std::abs(tin)) tin = tmaxX;
-//if (std::abs(tmaxY) < std::abs(tin)) tin = tmaxY;
-//if (std::abs(tmaxZ) < std::abs(tin)) tin = tmaxZ;
-//std::cout << tin << std::endl;
-
-//return (inP + (outP - inP) * tin);
 
 // Returns true when all the x,y,z coordiantes are all within the corners
 // of the bounding box.
@@ -331,18 +282,15 @@ void Box::trim(const Mesh &mesh) {
 	{
 		for (int y = 0; y < 3; y++)
 		{
-			if (contains(mesh.vertices[triangles[z]->v[y]].p))
+			for (int x = 0; x < 3; x++)
 			{
-				for (int x = 0; x < 3; x++)
+				if (mesh.vertices[triangles[z]->v[y]].p[x] > newMax[x])
 				{
-					if (mesh.vertices[triangles[z]->v[y]].p[x] > newMax[x])
-					{
-						newMax[x] = mesh.vertices[triangles[z]->v[y]].p[x];
-					}
-					if (mesh.vertices[triangles[z]->v[y]].p[x] < newMin[x])
-					{
-						newMin[x] = mesh.vertices[triangles[z]->v[y]].p[x];
-					}
+					newMax[x] = mesh.vertices[triangles[z]->v[y]].p[x];
+				}
+				if (mesh.vertices[triangles[z]->v[y]].p[x] < newMin[x])
+				{
+					newMin[x] = mesh.vertices[triangles[z]->v[y]].p[x];
 				}
 			}
 		}
@@ -364,7 +312,7 @@ void Box::trim(const Mesh &mesh) {
 // into its smallest form. The average vertex position of all the triangles is
 // calculated. The longest dimenention of the box is split in half and two
 // box are made using the new min and max vertices.
-std::pair<Box, Box> Box::split(Mesh &mesh)
+std::pair<Box, Box> Box::splitAvg(Mesh &mesh)
 {
 	float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
 	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
@@ -396,10 +344,100 @@ std::pair<Box, Box> Box::split(Mesh &mesh)
 	Vec3Df newMax = max;
 	newMin[edge] = avg[edge];
 	newMax[edge] = avg[edge];
-	std::cout << "tr: " << triangles.size() << std::endl;
 
-	Box leftBox = Box(min, newMax, triangles, mesh);
-	Box rightBox = Box(newMin, max, triangles, mesh);
+	return std::pair<Box, Box>(Box(min, newMax, triangles, mesh), Box(newMin, max, triangles, mesh));
+}
+
+// Returns two halves of a bounding box. The bounding box is first trimmed to
+// into its smallest form. The longest dimenention of the box is split in half and two
+// box are made using the middle vertices.
+std::pair<Box, Box> Box::splitMiddle(const int &minTriangles, Mesh &mesh)
+{
+	float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
+	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
+	float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
+
+	Vec3Df newMin, newMax;;
+
+	if (edgeX > edgeY && edgeX > edgeZ)
+	{
+		//	+------+
+		//  |`.    |`.
+		//  |  `3--X---7
+		//  |   |  |   |
+		//  0---+--+   |
+		//   `. |   `. |
+		//     `+------+
+		newMax = (corners[3].p + corners[7].p) / 2.0f;
+
+		//	+------+
+		//  |`.    |`.
+		//  |  `+--+---7
+		//  |   |  |   |
+		//  0---X--4   |
+		//   `. |   `. |
+		//     `+------+
+		newMin = (corners[0].p + corners[4].p) / 2.0f;
+	}
+	else if (edgeY > edgeX && edgeY > edgeZ)
+	{
+		//	+------+
+		//  |`.    |`.
+		//  |  `+------7
+		//  |   |  |   |
+		//  0---+--+   X
+		//   `. |   `. |
+		//     `+------6
+		newMax = (corners[6].p + corners[7].p) / 2.0f;
+
+		//	2------+
+		//  |`.    |`.
+		//  X  `+------7
+		//  |   |  |   |
+		//  0---+--+   |
+		//   `. |   `. |
+		//     `+------+
+		newMin = (corners[0].p + corners[2].p) / 2.0f;
+	}
+	else
+	{
+		//	+------5
+		//  |`.    |`X
+		//  |  `+------7
+		//  |   |  |   |
+		//  0---+--+   |
+		//   `. |   `. |
+		//     `+------+
+		newMax = (corners[5].p + corners[7].p) / 2.0f;
+
+		//	+------+
+		//  |`.    |`.
+		//  |  `+--+---7
+		//  |   |  |   |
+		//  0---|--+   |
+		//   `X |   `. |
+		//     1+------+
+		newMin = (corners[0].p + corners[1].p) / 2.0f;
+	}
+
+	return std::pair<Box, Box>(Box(corners[0].p, newMax, triangles, mesh), Box(newMin, corners[7].p, triangles, mesh));
+}
+
+void Box::clip(Box &leftBox, Box &rightBox, Mesh &mesh)
+{
+	float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
+	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
+	float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
+
+	int edge = 2;
+	if (edgeX > edgeY && edgeX > edgeZ)
+	{
+		edge = 0;
+	}
+	else if (edgeY > edgeX && edgeY > edgeZ)
+	{
+		edge = 1;
+	}
 
 	for (int i = 0; i < triangles.size(); i++)
 	{
@@ -454,14 +492,9 @@ std::pair<Box, Box> Box::split(Mesh &mesh)
 					outVer2 = triangles[i]->v[1];
 				}
 			}
-			Vec3Df IntersectionPoint1 = mesh.vertices[inVer].p + (mesh.vertices[inVer].p - mesh.vertices[outVer1].p) * ((newMax[edge] - mesh.vertices[inVer].p[edge]) / (mesh.vertices[inVer].p[edge] - mesh.vertices[outVer1].p[edge]));
-			Vec3Df IntersectionPoint2 = mesh.vertices[inVer].p + (mesh.vertices[inVer].p - mesh.vertices[outVer2].p) * ((newMax[edge] - mesh.vertices[inVer].p[edge]) / (mesh.vertices[inVer].p[edge] - mesh.vertices[outVer2].p[edge]));
-			std::cout << "Inter1: " << IntersectionPoint1 << std::endl;
-			std::cout << "Inter2: " << IntersectionPoint2 << std::endl;
-			if (IntersectionPoint1[0] < -20)
-			{
-				std::cout << "stop" << std::endl;
-			}
+			Vec3Df IntersectionPoint1 = mesh.vertices[inVer].p + (mesh.vertices[inVer].p - mesh.vertices[outVer1].p) * ((leftBox.max[edge] - mesh.vertices[inVer].p[edge]) / (mesh.vertices[inVer].p[edge] - mesh.vertices[outVer1].p[edge]));
+			Vec3Df IntersectionPoint2 = mesh.vertices[inVer].p + (mesh.vertices[inVer].p - mesh.vertices[outVer2].p) * ((leftBox.max[edge] - mesh.vertices[inVer].p[edge]) / (mesh.vertices[inVer].p[edge] - mesh.vertices[outVer2].p[edge]));
+
 			Vertex IntersectionVertex1 = mesh.vertices[inVer];
 			Vertex IntersectionVertex2 = mesh.vertices[inVer];
 
@@ -506,82 +539,4 @@ std::pair<Box, Box> Box::split(Mesh &mesh)
 			}
 		}
 	}
-	return std::pair<Box, Box>(leftBox, rightBox);
-}
-
-// Returns two halves of a bounding box. The bounding box is first trimmed to
-// into its smallest form. The longest dimenention of the box is split in half and two
-// box are made using the middle vertices.
-std::pair<Box, Box> Box::splitMiddle(const int &minTriangles, Mesh &mesh)
-{
-	trim(mesh);
-
-	float edgeX = Vec3Df::squaredDistance(corners[4].p, corners[0].p);
-	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
-	float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
-
-	Vec3Df newMin, newMax;;
-
-	if (edgeX > edgeY && edgeX > edgeZ)
-	{
-		//	+------+
-		//  |`.    |`.
-		//  |  `3--X---7
-		//  |   |  |   |
-		//  0---+--+   |
-		//   `. |   `. |
-		//     `+------+
-		newMin = (corners[3].p + corners[7].p) / 2.0f;
-
-		//	+------+
-		//  |`.    |`.
-		//  |  `+--+---7
-		//  |   |  |   |
-		//  0---X--4   |
-		//   `. |   `. |
-		//     `+------+
-		newMax = (corners[0].p + corners[4].p) / 2.0f;
-	}
-	else if (edgeY > edgeX && edgeY > edgeZ)
-	{
-		//	+------+
-		//  |`.    |`.
-		//  |  `+------7
-		//  |   |  |   |
-		//  0---+--+   X
-		//   `. |   `. |
-		//     `+------6
-		newMin = (corners[6].p + corners[7].p) / 2.0f;
-
-		//	2------+
-		//  |`.    |`.
-		//  X  `+------7
-		//  |   |  |   |
-		//  0---+--+   |
-		//   `. |   `. |
-		//     `+------+
-		newMax = (corners[0].p + corners[2].p) / 2.0f;
-	}
-	else
-	{
-		//	+------5
-		//  |`.    |`X
-		//  |  `+------7
-		//  |   |  |   |
-		//  0---+--+   |
-		//   `. |   `. |
-		//     `+------+
-		newMin = (corners[5].p + corners[7].p) / 2.0f;
-
-		//	+------+
-		//  |`.    |`.
-		//  |  `+--+---7
-		//  |   |  |   |
-		//  0---|--+   |
-		//   `X |   `. |
-		//     1+------+
-		newMax = (corners[0].p + corners[1].p) / 2.0f;
-	}
-
-	return std::pair<Box, Box>(Box(corners[0].p, newMax, triangles, mesh), Box(newMin, corners[7].p, triangles, mesh));
 }
