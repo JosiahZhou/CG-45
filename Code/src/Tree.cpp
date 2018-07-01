@@ -25,19 +25,19 @@ template<class T> Tree<T>::Tree(const T &data, Tree<T>* left, Tree<T>* right)
 // Splits the box of the tree into two and allocates them to the left
 // and right trees until the minimum triangles in a box has been
 // exceeded.
-void Tree<Box>::split(const int minTriangles, const int maxTriangles, Mesh &mesh)
+void Tree<Box>::split(const int minTriangles, const int maxLevel, Mesh &mesh)
 {
-	if (data.triangles.size() < minTriangles || data.triangles.size() > maxTriangles) return;
+	if (data.triangles.size() < minTriangles || maxLevel == 0) return;
 
-	this->data.trim(mesh);
+	std::pair<Box, Box> boxes = data.splitAvg(mesh);
 
-	std::pair<Box, Box> boxes = data.split(mesh);
+	std::cout << Vec3Df::distance(data.min, data.max) << std::endl;
 
 	this->left = new Tree<Box>(boxes.first);
 	this->right = new Tree<Box>(boxes.second);
 
-	this->left->split(minTriangles, maxTriangles, mesh);
-	this->right->split(minTriangles, maxTriangles, mesh);
+	this->left->split(minTriangles, maxLevel - 1, mesh);
+	this->right->split(minTriangles, maxLevel - 1, mesh);
 }
 
 // https://stackoverflow.com/questions/13484943/print-a-binary-tree-in-a-pretty-way
@@ -51,7 +51,7 @@ void Tree<Box>::print(const int depth)
 	printf("\t");
 	for (i = 0; i < depth; i++)
 		if (i == depth - 1)
-			printf("%s---", rec[depth - 1] ? "|" : "|");
+			printf("%s---", "|");
 		else
 			printf("%s   ", rec[i] ? "|" : "  ");
 	printf("%ld\n", this->data.triangles.size());
