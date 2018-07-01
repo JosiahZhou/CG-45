@@ -61,11 +61,11 @@ void init()
 	//PLEASE ADAPT THE LINE BELOW TO THE FULL PATH OF THE dodgeColorTest.obj
 	//model, e.g., "C:/temp/myData/GraphicsIsFun/dodgeColorTest.obj",
 	//otherwise the application will not load properly
-	MyMesh.loadMesh("DodgeColorTest.obj", true);
+	MyMesh.loadMesh("test_scene_1.obj", true);
 	MyMesh.computeVertexNormals();
 
 	root = new Tree<Box>(Box(MyMesh));
-	root->split(MyMesh.triangles.size()/10, MyMesh.triangles.size()*1.5, MyMesh);
+	root->split(MyMesh.triangles.size()/4, 5, MyMesh);
 	root->print(0);
 
 	//one first move: initialize the first light source
@@ -634,11 +634,11 @@ void yourDebugDraw()
 	glPopAttrib();
 
 	// draw the bounding boxes
-	/*root->highlightEdges();*/
-	std::vector<Box*> leaves = root->getLeaves();
-	for (int i = 0; i < leaves.size(); i++) {
-		leaves[i]->highlightEdges();
-	}
+	root->highlightEdges();
+	//std::vector<Box*> leaves = root->getLeaves();
+	//for (int i = 0; i < leaves.size(); i++) {
+	//	leaves[i]->highlightEdges();
+	//}
 
 	for (int i = 0; i < 20; i++) {
 		drawRay(recurseTestRayOrigins[i], recurseTestRayDestinations[i], Vec3Df(0, 1, 0));
