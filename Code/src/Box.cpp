@@ -331,11 +331,11 @@ std::pair<Box, Box> Box::splitAvg(Mesh &mesh)
 	avg /= ((float)triangles.size() * 3.0f);
 
 	int edge = 2;
-	if (edgeX > edgeY && edgeX > edgeZ)
+	if (edgeX >= edgeY && edgeX >= edgeZ)
 	{
 		edge = 0;
 	}
-	else if (edgeY > edgeX && edgeY > edgeZ)
+	else if (edgeY >= edgeX && edgeY >= edgeZ)
 	{
 		edge = 1;
 	}
@@ -357,7 +357,7 @@ std::pair<Box, Box> Box::splitMiddle(const int &minTriangles, Mesh &mesh)
 	float edgeY = Vec3Df::squaredDistance(corners[2].p, corners[0].p);
 	float edgeZ = Vec3Df::squaredDistance(corners[1].p, corners[0].p);
 
-	Vec3Df newMin, newMax;;
+	Vec3Df newMin, newMax;
 
 	if (edgeX > edgeY && edgeX > edgeZ)
 	{
