@@ -20,11 +20,11 @@ public:
 		return this->left->size() + this->right->size() + 1;
 	}
 
-	void split(const int &minTriangles, const Mesh &mesh);
+	void split(const int minTriangles, const int maxTriangles, Mesh &mesh);
 
 	void print(const int depth);
 
-	std::vector<Box>* getLeaves(void);
+	std::vector<Box*> getLeaves(void);
 
 	void highlightEdges(void);
 };

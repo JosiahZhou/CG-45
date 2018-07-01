@@ -25,16 +25,19 @@ template<class T> Tree<T>::Tree(const T &data, Tree<T>* left, Tree<T>* right)
 // Splits the box of the tree into two and allocates them to the left
 // and right trees until the minimum triangles in a box has been
 // exceeded.
-void Tree<Box>::split(const int &minTriangles, const Mesh &mesh)
+void Tree<Box>::split(const int minTriangles, const int maxTriangles, Mesh &mesh)
 {
-	if (this == NULL || data.triangles.size() < minTriangles) return;
+	if (data.triangles.size() < minTriangles || data.triangles.size() > maxTriangles) return;
+
+	this->data.trim(mesh);
+
 	std::pair<Box, Box> boxes = data.split(mesh);
 
 	this->left = new Tree<Box>(boxes.first);
 	this->right = new Tree<Box>(boxes.second);
 
-	this->left->split(minTriangles, mesh);
-	this->right->split(minTriangles, mesh);
+	this->left->split(minTriangles, maxTriangles, mesh);
+	this->right->split(minTriangles, maxTriangles, mesh);
 }
 
 // https://stackoverflow.com/questions/13484943/print-a-binary-tree-in-a-pretty-way
@@ -59,13 +62,13 @@ void Tree<Box>::print(const int depth)
 }
 
 // Getter for all the leaf boxes inside the Tree<Box>. Boxes are added recursively to a tree.
-std::vector<Box>* Tree<Box>::getLeaves(void)
+std::vector<Box*> Tree<Box>::getLeaves(void)
 {
-	if (this == NULL) return &std::vector<Box>();
-	if (this->left == NULL && this->right == NULL) return &std::vector<Box>{ this->data };
-	std::vector<Box>* boxes = this->left->getLeaves();
-	std::vector<Box>* rightBoxes = this->right->getLeaves();
-	boxes->insert(boxes->end(), rightBoxes->begin(), rightBoxes->end());
+	if (this == NULL) return std::vector<Box*>();
+	if (this->left == NULL && this->right == NULL) return std::vector<Box*>{ &this->data };
+	std::vector<Box*> boxes = this->left->getLeaves();
+	std::vector<Box*> rightBoxes = this->right->getLeaves();
+	boxes.insert(boxes.end(), rightBoxes.begin(), rightBoxes.end());
 	return boxes;
 }
 
