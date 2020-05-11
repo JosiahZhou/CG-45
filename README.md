@@ -1,6 +1,5 @@
 # CG-45
 
-Glenn Keller                -   A2
 Matthias Kortleven          -   A1
 Celal  Karakoc              -   B
 Jesse Jansen                -   B
@@ -17,8 +16,8 @@ Task distributions and work done
     Tree structure                          -   Celal               -   Done
     Reflection/refraction                   -   Matthias            -   Working but buggy
     Recursive ray tracing                   -   Matthias            -   Done
-    Soft shadows                            -   Glenn/Suleiman      -   WIP
-    Hard shadows                            -   Suleiman/Glenn      -   WIP
+    Soft shadows                            -   Suleiman      -   WIP
+    Hard shadows                            -   Suleiman      -   WIP
     Diffuse stuff                           -   Josiah              -   WIP
     Multithreading                          -   Daniel              -   WIP
 
@@ -28,6 +27,4 @@ Bug report:
 
     Week 2:
     Fix bounding box tree problem           -   Celal
-    Hard shadows                            -   Glenn/Suleiman/Celal
-    Soft shadows                            -   Glenn                   -   Testing
     Make simple scene/materials             -   Matthias
